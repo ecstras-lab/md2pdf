@@ -80,18 +80,18 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 `md2pdf -i` opens a picker for your notes, a theme, and a folder to save into. Choose a note, press enter, and it writes the PDF. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way.
 
 ```
- ███▄  ▄███ ██▀▀▀█▄ ▀▀▀▀▀█▄ ██▀▀▀█▄ ██▀▀▀█▄ ██▀▀▀▀▀
- ██ ▀██▀ ██ ██   ██ ▄█▀▀▀▀  ██▀▀▀▀  ██   ██ ██▀▀▀     light  dark
- ▀▀      ▀▀ ▀▀▀▀▀▀  ▀▀▀▀▀▀▀ ▀▀      ▀▀▀▀▀▀  ▀▀
+ █▙ ▟█▐▛▀▙▝▀▀▙▐▛▀▙▐▛▀▙▐▛▀▀
+ █▝█▘█▐▌ █▗▛▀▘▐▛▀▘▐▌ █▐▛▀                             light  dark
+ ▀   ▀▝▀▀▘▝▀▀▀▝▘  ▝▀▀▘▝▘
 ╭ notes ─────────────────────────────╮╭ export ──────────────────╮
 │  README.md                         ││                          │
-│  todo.md                           ││ ┃  note                  │
-│  docs/architecture.md              ││ ┃  tests/test.md         │
-│  docs/decisions.md                 ││             ↓            │
-│  tests/Another Note.md             ││ ┃  save to               │
-│› tests/test.md                     ││ ┃  PDF/test.pdf          │
-│                                    ││ ┃                        │
-│                                    ││         ⏎  export        │
+│  todo.md                           ││   note                   │
+│  docs/architecture.md              ││   tests/test.md          │
+│  docs/decisions.md                 ││   ↓                      │
+│  tests/Another Note.md             ││   save to                │
+│› tests/test.md                     ││   PDF/test.pdf           │
+│                                    ││                          │
+│                                    ││          ⏎  export       │
 ╰ / to search ───────────────────────╯╰──────────────────────────╯
  ↑↓ note   t theme   e save to   ⏎ export   / search   q quit
 ```
