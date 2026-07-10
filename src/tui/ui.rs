@@ -132,8 +132,9 @@ fn draw_masthead(
 
     frame.render_widget(
         Line::from(vec![
-            Span::styled(" md2", Style::new().fg(palette.heading).bold()),
-            Span::styled("pdf", Style::new().fg(palette.accent).bold()),
+            Span::styled(" md", Style::new().fg(palette.heading).bold()),
+            Span::styled("2", Style::new().fg(palette.accent).bold()),
+            Span::styled("pdf", Style::new().fg(palette.heading).bold()),
         ]),
         mark,
     );
@@ -194,7 +195,7 @@ fn draw_notes(
 
     frame.render_widget(
         Line::from(vec![
-            eyebrow("NOTES", palette),
+            eyebrow("MARKDOWN", palette),
             Span::styled(
                 format!("   {}", app.matches.len()),
                 Style::new().fg(palette.muted),
