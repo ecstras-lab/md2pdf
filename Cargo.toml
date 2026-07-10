@@ -3,6 +3,8 @@ name = "md2pdf"
 version = "0.1.0"
 edition = "2024"
 authors = ["ecstra <themythbustertmb@gmail.com>"]
+license = "MIT"
+description = "Turns an Obsidian note into a themed PDF, typeset with Typst"
 
 [dependencies]
 anyhow = "1.0"

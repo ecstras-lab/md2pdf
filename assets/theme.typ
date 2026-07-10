@@ -755,12 +755,13 @@
           fill: palette.primary,
           weight: 600,
         )
-        // Sized and shifted so the mark's ink matches the cap height of the
-        // word beside it. `bounds` edges make the box the ink, not the em.
+        // The mark's ink is the same height as the capitals beside it, and
+        // centred on them. `bounds` edges measure the ink rather than the em,
+        // which is what makes a size in points mean a height on the page.
         box(
-          baseline: 0.17pt,
+          baseline: 0.04pt,
           text(
-            size: 7.9pt,
+            size: 8.25pt,
             font: ornament,
             top-edge: "bounds",
             bottom-edge: "bounds",

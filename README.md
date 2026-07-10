@@ -1,4 +1,3 @@
-
 <p align="center">
   <img
     width="640"
@@ -14,33 +13,45 @@
   <br><br>
 </p>
 
+<p align="center">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-yellow.svg"></a>
+  <a href="https://www.rust-lang.org"><img alt="Rust" src="https://img.shields.io/badge/rust-2024_edition-orange.svg"></a>
+</p>
+
 ## Overview
 
-md2pdf turns an Obsidian flavoured Markdown note into a themed PDF. There is no browser anywhere in it. The note becomes Typst markup, and Typst typesets the PDF inside the same process.
+md2pdf turns an Obsidian note into a PDF that still looks like the note. Callouts stay callouts. Code stays highlighted. The frontmatter becomes the properties table you are used to seeing under the title.
 
-It began as a port of a Node script that drove Puppeteer over a page of handwritten CSS. Everything that stylesheet did is here, matched against the old output to within about two points over a document six thousand points tall. What the browser was doing implicitly, such as reaching for a system font when Montserrat had no ✦ to give, is now done on purpose.
-
-The result is one binary, with the fonts inside it, that renders the same document on any machine.
+It is one binary with the fonts already inside it. Nothing to install alongside it, nothing fetched over the network, and the same note comes out the same on any machine.
 
 ## Features
 
-* **Obsidian syntax:** all 27 callout kinds, wikilink embeds, `==highlights==`, `%%comments%%`, `#tags`, YAML frontmatter as a properties table, footnotes with backlinks, and task lists.
-* **Syntax highlighting:** the theme's highlight.js colours are translated into a TextMate scheme at run time, so code is coloured by the same syntect that Typst ships with.
-* **Math:** LaTeX is converted to Typst math, inline and display.
-* **Two themes:** light and dark, both carrying the original palette down to the hex value.
-* **No network, no browser:** Montserrat, JetBrains Mono, DejaVu Sans and New Computer Modern Math are compiled into the binary.
-* **Honest about gaps:** an embed the converter cannot draw, such as a video or an image that is not there, leaves a marked box in the PDF saying why.
+* **Callouts:** all 27 kinds Obsidian knows, each with its own colour and icon.
+* **Properties:** frontmatter becomes the table under the title, with tag pills, formatted dates, links and checkboxes.
+* **Footnotes:** numbered in the order you reference them, gathered under a divider at the end, each with a link back to where it was cited.
+* **Code:** fenced blocks are syntax highlighted and labelled with their language.
+* **Math:** LaTeX, both inline and as its own centred block.
+* **Everything else:** image embeds, `==highlights==`, `%%comments%%`, `#tags`, task lists, tables, nested lists, strikethrough, and quotes.
+* **Two themes:** light and dark.
+
+## Install
+
+You need Rust. Nothing else.
+
+```bash
+git clone https://github.com/ecstras-lab/md2pdf.git
+cd md2pdf
+cargo install --path .
+```
 
 ## Usage
 
 ```bash
-md2pdf note.md                       # writes PDF/note.pdf, light theme
+md2pdf note.md                       # writes PDF/note.pdf
 md2pdf note.md -t dark               # dark theme
-md2pdf notes/post.md -o ~/post.pdf   # choose the output path
+md2pdf notes/post.md -o ~/post.pdf   # choose where it lands
 md2pdf note -q                       # add the .md, and say nothing
 ```
-
-Every run reports the theme, the source, the output, and any embed it could not draw. A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` lands at `PDF/notes/2024/post.pdf`.
 
 ```
   -t, --theme <light|dark>   colour theme, light by default
@@ -48,45 +59,35 @@ Every run reports the theme, the source, the output, and any embed it could not 
   -q, --quiet                report nothing but errors
 ```
 
-## Building
+A missing `.md` is added for you. Without an output path the PDF mirrors your folders under `PDF/`, so `notes/2024/post.md` lands at `PDF/notes/2024/post.pdf`.
 
-You need Rust and Cargo. Nothing else.
+Every run says what it did.
 
-```bash
-git clone https://github.com/ecstra/md2pdf.git
-cd md2pdf
-cargo build --release
+```
+  theme dark
+ source notes/post.md
+ output PDF/notes/post.pdf
 ```
 
-The fixture note under `tests/` exercises every feature at once, alongside the image, the video and the note it embeds.
+## What it will not do
 
-```bash
-cargo run -- tests/test.md
-```
+A PDF has no web browser in it, and no video player, so a few things in a note have nowhere to go. None of them vanish quietly. Each one leaves a marked box where it belonged, naming the reason, and the same reason is printed when you run the command.
 
-## How It Works
+* Raw HTML is dropped. A `<div>` or a `<details>` block has nothing to render it.
+* Videos, audio and embedded notes cannot be drawn.
+* An image that is not on disk is marked rather than skipped.
 
-Four stages, one module each.
+## Notes
 
-1. `markdown/frontmatter.rs` splits the YAML block off the top and sorts each value into one of the five shapes the properties table draws.
-2. `markdown/` rewrites Obsidian embeds, parses the rest with `pulldown-cmark`, and walks the event stream to emit Typst markup. Every run of text is emitted as a Typst string literal, so no character in a note can be mistaken for syntax.
-3. `document/` renders the theme as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body.
-4. `document/compile.rs` hands the whole source to Typst with the embedded fonts and the in memory files, then exports the PDF.
+The whole theme is one Typst stylesheet. If you want to change a colour, a margin or an icon, that is the only file you need to open.
 
-`assets/theme.typ` is the stylesheet, written in Typst rather than CSS. The body never styles anything itself. It only calls the helpers the stylesheet defines.
+The design notes and the reasoning behind the trickier parts live in `docs/`.
 
-## Fidelity
+## Licence
 
-The port is measured, not eyeballed. Against the original browser output, every horizontal landmark lands within 0.6pt, and the worst vertical drift across the shared sections is under three points. Two tests are worth knowing about.
+MIT. See [LICENSE](LICENSE).
 
-* `the_stylesheet_compiles_every_element_it_styles` runs a fixture through a real Typst compile, in both themes, so a syntax error in `assets/theme.typ` fails in CI rather than at your shell.
-* `syntect_parses_the_generated_theme` feeds the generated colour scheme to the same library Typst uses.
-
-Where the port could not match the browser, `docs/decisions.md` says so and says why. Equations are set in New Computer Modern Math, because KaTeX drew formulas from ordinary glyphs and Typst needs a font with a MATH table. Box shadows are gone. Raw HTML is dropped, since a PDF has no HTML engine to render it with.
-
-## Licences
-
-The vendored fonts keep their own licences, which sit beside them in `assets/fonts/`.
+The bundled fonts keep their own licences, which sit beside them in `assets/fonts/`.
 
 * Montserrat and JetBrains Mono: SIL Open Font License.
 * DejaVu Sans: the DejaVu licence, a permissive Bitstream Vera derivative.
