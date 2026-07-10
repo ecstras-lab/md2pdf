@@ -130,7 +130,7 @@ mod tests {
         let drawn = draw(&mut app, &mut terminal);
 
         for expected in [
-            "md2pdf", "light", "dark", "notes", "export", "source", "save to", "test.md", "quit",
+            "md2pdf", "light", "dark", "notes", "export", "save to", "test.md", "quit",
         ] {
             assert!(drawn.contains(expected), "no {expected} on screen\n{drawn}");
         }

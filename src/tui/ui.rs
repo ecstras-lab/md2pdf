@@ -6,7 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, List, ListItem, Padding, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Padding, Paragraph};
 
 use crate::cli::ThemeName;
 use crate::theme::{self, Theme};
@@ -15,10 +15,6 @@ use crate::tui::notes;
 
 /// The skipped panel grows with what it has to say, up to this.
 const SKIPPED_HEIGHT: u16 = 6;
-
-/// How wide the labels in the export panel are, so their values line up. One
-/// past the longest label, `save to`, so every value keeps a gap.
-const LABEL_WIDTH: usize = 8;
 
 /// The interface wears the colours of the document, so that choosing a theme
 /// shows what the theme looks like instead of naming it.
@@ -31,6 +27,10 @@ struct Palette {
     on_primary: Color,
     warning: Color,
     danger: Color,
+    /// The subtle fill behind the export cards.
+    fill: Color,
+    /// The edge on the source card, the blue the footnotes wear.
+    flow: Color,
 }
 
 impl Palette {
@@ -44,6 +44,8 @@ impl Palette {
             on_primary: rgb(theme::PRIMARY_FOREGROUND),
             warning: rgb(theme::callout_color("warning")),
             danger: rgb(theme::callout_color("danger")),
+            fill: rgb(theme.secondary),
+            flow: rgb(theme::FOOTNOTE_ACCENT),
         }
     }
 
@@ -197,61 +199,97 @@ fn search_line(
     ])
 }
 
-/// What will be written, and where. The one panel that used to hold the render.
+/// What will be written, and where, as a note flowing down into a PDF. The one
+/// panel that used to hold the render.
 fn draw_export(
     frame: &mut Frame,
     area: Rect,
     app: &App,
     palette: &Palette,
 ) {
-    let block = palette.panel("export").padding(Padding::horizontal(2));
+    let block = palette.panel("export").padding(Padding::horizontal(1));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let source = app
+    let [_, from, arrow, to, _, action] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(3),
+        Constraint::Length(1),
+        Constraint::Length(3),
+        Constraint::Length(1),
+        Constraint::Min(1),
+    ])
+    .areas(inner);
+
+    let note = app
         .selected()
         .map(notes::label)
         .unwrap_or_else(|| "no note selected".to_owned());
 
-    let lines = vec![
-        Line::default(),
-        row(
-            "source",
-            Span::styled(source, Style::new().fg(palette.foreground)),
-            palette,
-        ),
-        row(
-            "theme",
-            Span::styled(app.theme.label(), Style::new().fg(palette.foreground)),
-            palette,
-        ),
-        save_row(app, palette),
-        Line::default(),
-        action_line(app, palette),
+    card(
+        frame,
+        from,
+        palette.flow,
+        "note",
+        Line::from(Span::styled(
+            note,
+            Style::new().fg(palette.foreground).bold(),
+        )),
+        palette,
+    );
+
+    frame.render_widget(
+        Paragraph::new(Span::styled("↓", Style::new().fg(palette.muted))).centered(),
+        arrow,
+    );
+
+    card(
+        frame,
+        to,
+        palette.primary,
+        "save to",
+        save_value(app, palette),
+        palette,
+    );
+
+    draw_action(frame, action, app, palette);
+}
+
+/// A filled card with a coloured left edge, in the manner of the document's own
+/// callouts. A small label sits above the value.
+fn card(
+    frame: &mut Frame,
+    area: Rect,
+    accent: Color,
+    label: &str,
+    value: Line<'static>,
+    palette: &Palette,
+) {
+    let block = Block::new()
+        .borders(Borders::LEFT)
+        .border_type(BorderType::Thick)
+        .border_style(Style::new().fg(accent))
+        .style(Style::new().bg(palette.fill))
+        .padding(Padding::new(2, 1, 0, 0));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let text = vec![
+        Line::from(Span::styled(
+            label.to_owned(),
+            Style::new().fg(palette.muted),
+        )),
+        value,
     ];
 
-    frame.render_widget(Paragraph::new(lines), inner);
+    frame.render_widget(Paragraph::new(text), inner);
 }
 
-/// One `label  value` line of the export panel.
-fn row<'a>(
-    label: &'static str,
-    value: Span<'a>,
-    palette: &Palette,
-) -> Line<'a> {
-    Line::from(vec![
-        Span::styled(
-            format!("{label:LABEL_WIDTH$}"),
-            Style::new().fg(palette.muted),
-        ),
-        value,
-    ])
-}
-
-/// The save line, editable in place. While it is being typed the folder carries
+/// The save value, editable in place. While it is being typed the folder carries
 /// a cursor, and the file name the note lends it trails behind in muted text so
 /// it is plain that only the folder is being changed.
-fn save_row(
+fn save_value(
     app: &App,
     palette: &Palette,
 ) -> Line<'static> {
@@ -263,10 +301,6 @@ fn save_row(
 
     if app.editing_save {
         return Line::from(vec![
-            Span::styled(
-                format!("{:LABEL_WIDTH$}", "save to"),
-                Style::new().fg(palette.muted),
-            ),
             Span::styled(app.save_dir.clone(), Style::new().fg(palette.foreground)),
             Span::styled("▏", Style::new().fg(palette.primary)),
             Span::styled(filename, Style::new().fg(palette.muted)),
@@ -277,40 +311,44 @@ fn save_row(
         .output_display()
         .unwrap_or_else(|| format!("{}{filename}", app.save_dir));
 
-    row(
-        "save to",
-        Span::styled(shown, Style::new().fg(palette.foreground)),
-        palette,
-    )
+    Line::from(Span::styled(
+        shown,
+        Style::new().fg(palette.foreground).bold(),
+    ))
 }
 
-/// The line under the fields, which says what pressing enter will do, or that a
+/// The button under the cards, which says what pressing enter will do, or that a
 /// write is under way.
-fn action_line(
+fn draw_action(
+    frame: &mut Frame,
+    area: Rect,
     app: &App,
     palette: &Palette,
-) -> Line<'static> {
-    if app.writing {
-        return Line::from(vec![
+) {
+    let line = if app.writing {
+        Line::from(vec![
             Span::styled(
                 format!("{} ", SPINNER[app.spinner]),
                 Style::new().fg(palette.primary).bold(),
             ),
             Span::styled("writing the PDF", Style::new().fg(palette.foreground)),
-        ]);
-    }
-
-    if app.editing_save {
-        return Line::from(Span::styled(
-            "⏎ set folder    esc cancel",
+        ])
+    } else if app.editing_save {
+        Line::from(Span::styled(
+            "⏎ set folder     esc cancel",
             Style::new().fg(palette.muted),
-        ));
-    }
+        ))
+    } else {
+        Line::from(Span::styled(
+            "  ⏎  export  ",
+            Style::new()
+                .bg(palette.primary)
+                .fg(palette.on_primary)
+                .bold(),
+        ))
+    };
 
-    Line::from(vec![
-        Span::styled("⏎", Style::new().fg(palette.primary).bold()),
-        Span::styled(" to export", Style::new().fg(palette.muted)),
-    ])
+    frame.render_widget(Paragraph::new(line).centered(), area);
 }
 
 /// Everything the last write could not draw. Each of these also left a marked
