@@ -1,6 +1,2 @@
 edition = "2024"
-
-# `CLAUDE.md` asks for one parameter per line. rustfmt can hold that for
-# definitions. It reflows call sites whatever the width settings say, so the
-# rest of the rule lives in review rather than in the formatter.
 fn_params_layout = "Vertical"
