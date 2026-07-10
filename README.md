@@ -1,6 +1,5 @@
 <p align="center">
   <img
-    width="640"
     alt="md2pdf"
     src="media/name.png" />
 </p>
