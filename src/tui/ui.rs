@@ -11,7 +11,7 @@ use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Padding, Para
 use crate::cli::ThemeName;
 use crate::theme::{self, Theme};
 use crate::tui::app::{App, SPINNER};
-use crate::tui::notes;
+use crate::tui::{logo, notes};
 
 /// The skipped panel grows with what it has to say, up to this.
 const SKIPPED_HEIGHT: u16 = 6;
@@ -87,7 +87,7 @@ pub(super) fn draw(
     };
 
     let [header, body, skipped, footer] = Layout::vertical([
-        Constraint::Length(1),
+        Constraint::Length(logo::HEIGHT),
         Constraint::Min(6),
         Constraint::Length(panel),
         Constraint::Length(1),
@@ -104,7 +104,7 @@ pub(super) fn draw(
     draw_footer(frame, footer, app, &palette);
 }
 
-/// The name on the left, the theme on the right, drawn as the two swatches it
+/// The logo on the left, the theme on the right, drawn as the two swatches it
 /// switches between.
 fn draw_header(
     frame: &mut Frame,
@@ -116,11 +116,8 @@ fn draw_header(
         Layout::horizontal([Constraint::Min(0), Constraint::Length(14)]).areas(area);
 
     frame.render_widget(
-        Line::from(vec![
-            Span::styled(" md", Style::new().fg(palette.heading).bold()),
-            Span::styled("2", Style::new().fg(palette.primary).bold()),
-            Span::styled("pdf", Style::new().fg(palette.heading).bold()),
-        ]),
+        Paragraph::new(logo::lines(palette.heading, palette.primary))
+            .block(Block::new().padding(Padding::new(1, 0, 0, 0))),
         name,
     );
 
@@ -139,9 +136,16 @@ fn draw_header(
 
     let light = app.theme == ThemeName::Light;
 
+    // The swatches sit on the logo's middle row, not its top edge.
+    let middle = Rect {
+        y: themes.y + themes.height / 2,
+        height: 1,
+        ..themes
+    };
+
     frame.render_widget(
         Line::from(vec![swatch("light", light), swatch("dark", !light)]).right_aligned(),
-        themes,
+        middle,
     );
 }
 

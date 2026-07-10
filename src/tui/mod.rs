@@ -1,6 +1,7 @@
 //! An interactive front end. Pick a note, choose where it lands, write the PDF.
 
 mod app;
+mod logo;
 mod notes;
 mod ui;
 
@@ -129,8 +130,9 @@ mod tests {
 
         let drawn = draw(&mut app, &mut terminal);
 
+        // The wordmark is a block-art logo now, not the literal text, so the
+        // masthead is checked by its theme swatches instead.
         for expected in [
-            "md2pdf",
             "light",
             "dark",
             "tests/test.md",
