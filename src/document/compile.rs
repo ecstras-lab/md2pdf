@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn the_ornaments_montserrat_lacks_resolve_through_the_fallback() {
-        let source = page("#set text(font: (\"Montserrat\", \"DejaVu Sans\"))\n✦ ※ ⚙ ↩ ◦ ▪");
+        let source = page("#set text(font: (\"Montserrat\", \"DejaVu Sans\"))\n✦ ⚙ ↩ ◦ ▪");
 
         let pdf = to_pdf(&source, &[]);
 

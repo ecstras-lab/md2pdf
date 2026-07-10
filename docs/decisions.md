@@ -62,7 +62,7 @@ The stylesheet asked for Montserrat and JetBrains Mono from the Google Fonts CDN
 
 Two fonts were added that the original never named.
 
-- DejaVu Sans, because Montserrat carries none of the ornaments the theme uses. The browser was quietly falling back to a system font for ✦, ※, ⚙, ↩, ◦ and ▪, and there is no system font to fall back to here.
+- DejaVu Sans, because Montserrat carries none of the ornaments the theme uses. The browser was quietly falling back to a system font for ✦, ⚙, ↩, ◦ and ▪, and there is no system font to fall back to here.
 - New Computer Modern Math, because Typst lays equations out from a font's OpenType MATH table and none of the text faces carry one. Without it every equation fails with a bare message about no font being found. The browser had no such constraint, since KaTeX drew formulas out of ordinary glyphs.
 
 The cost is about 4.2MB of assets. The gain is a binary that renders identically anywhere.

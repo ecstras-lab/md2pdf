@@ -4,7 +4,7 @@
 // (16px) is 12pt. `palette`, `marker-colors`, `heading-rules`, `callouts` and
 // `syntax-theme` are bound by the generated preamble that precedes this file.
 
-// Montserrat carries no ornaments, so DejaVu Sans backs it for ✦ ※ ⚙ ↩ ◦ ▪.
+// Montserrat carries no ornaments, so DejaVu Sans backs it for ✦ ⚙ ↩ ◦ ▪.
 #let sans = ("Montserrat", "DejaVu Sans")
 #let mono = ("JetBrains Mono", "DejaVu Sans")
 #let ornament = "DejaVu Sans"
@@ -749,28 +749,20 @@
         stroke: 1.5pt + palette.rule,
       )[#{
         // `content: '\203B notes'` ends the escape on the space that follows
-        // it, so the mark butts against the word. Only DejaVu carries ※, and
-        // only Montserrat has a semibold face for the word.
-        set text(
-          fill: palette.primary,
-          weight: 600,
-        )
-        // The mark's ink is the same height as the capitals beside it, and
-        // centred on them. `bounds` edges measure the ink rather than the em,
-        // which is what makes a size in points mean a height on the page.
-        box(
-          baseline: 0.04pt,
-          text(
-            size: 8.25pt,
-            font: ornament,
-            top-edge: "bounds",
-            bottom-edge: "bounds",
-          )[※],
-        )
-        h(0.42pt)
+        // it, so the mark butts against the word.
+        //
+        // The mark is drawn rather than set. Every reference mark in the
+        // bundled faces is a cluster of dots that turns to mush at this size.
+        // An SVG takes a height in points, which here is the 0.7em cap height
+        // of the word beside it, and a box hangs from the baseline, so the
+        // mark stands on it exactly as the capitals do.
+        box(baseline: -0.15pt, image("/icons/notes.svg", height: 5.88pt))
+        h(1.9pt)
         text(
           size: 8.4pt,
           font: sans,
+          weight: 600,
+          fill: palette.primary,
           tracking: 0.42pt,
         )[NOTES]
       }]

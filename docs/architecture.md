@@ -52,7 +52,7 @@ Four families ship inside the binary, under `assets/fonts/`.
 
 - Montserrat, in six faces, for body text.
 - JetBrains Mono, in three faces, for code.
-- DejaVu Sans, which carries the ornaments Montserrat lacks, meaning ✦ for the title rule, ※ for the notes divider, ⚙ for the properties header, ↩ for a footnote backlink, and the ◦ and ▪ list markers.
+- DejaVu Sans, which carries the ornaments Montserrat lacks, meaning ✦ for the title rule, ⚙ for the properties header, ↩ for a footnote backlink, and the ◦ and ▪ list markers. The mark on the notes divider is drawn as an SVG instead, because no bundled face has a reference mark that reads at 6pt.
 - New Computer Modern Math, which Typst needs for its OpenType MATH table. Without it, any equation fails to compile.
 
 Licences sit beside the font files. All four are freely redistributable.

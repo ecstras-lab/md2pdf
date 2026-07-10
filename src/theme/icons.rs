@@ -31,6 +31,25 @@ impl Icon {
     }
 }
 
+/// The mark on the footnotes divider, a six spoke asterisk.
+///
+/// It carries its own canvas, cropped to the ink, rather than the 24 by 24 one
+/// the callout icons share. A shared canvas would surround it with side
+/// bearings, and the word it sits against would be pushed away by them.
+pub fn notes_mark(color: Color) -> String {
+    format!(
+        concat!(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="5.938 5 12.124 14" "#,
+            r#"fill="none" stroke="{stroke}" stroke-width="2" stroke-linecap="round">"#,
+            r#"<path d="M12 6v12"/>"#,
+            r#"<path d="M17.196 9 6.804 15"/>"#,
+            r#"<path d="m6.804 9 10.392 6"/>"#,
+            r#"</svg>"#,
+        ),
+        stroke = color.to_hex(),
+    )
+}
+
 /// The icon for a callout, keyed by the names in [`crate::theme::CALLOUT_ALIASES`].
 pub fn callout(icon: &str) -> &'static Icon {
     match icon {
@@ -200,6 +219,23 @@ mod tests {
         assert!(
             !svg.contains("currentColor"),
             "resvg cannot resolve currentColor"
+        );
+    }
+
+    /// A 24 by 24 canvas would frame the mark in side bearings, and the word
+    /// it sits against would be pushed away by them.
+    #[test]
+    fn the_notes_mark_is_coloured_and_cropped_to_its_own_ink() {
+        let svg = notes_mark(Color::hex(0xe11d48));
+
+        assert!(svg.contains(r##"stroke="#e11d48""##));
+        assert!(
+            !svg.contains("0 0 24 24"),
+            "the mark took the shared canvas"
+        );
+        assert!(
+            !svg.contains("{color}"),
+            "an unsubstituted placeholder remains"
         );
     }
 

@@ -121,6 +121,10 @@ pub fn assets(theme: &Theme) -> Vec<(String, Vec<u8>)> {
         icons::CALENDAR.to_svg(theme.muted_foreground).into_bytes(),
     ));
     files.push((
+        "/icons/notes.svg".to_owned(),
+        icons::notes_mark(theme::PRIMARY).into_bytes(),
+    ));
+    files.push((
         "/icons/missing.svg".to_owned(),
         icons::callout("warning")
             .to_svg(theme.muted_foreground)
