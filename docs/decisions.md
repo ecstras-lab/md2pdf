@@ -40,9 +40,9 @@ Several rows in the properties block and the footnote list are flex containers i
 
 ## An embed that cannot be drawn says so in the document
 
-A missing image, a video, a note transclusion. The converter used to skip these and mention them on the terminal, which left a hole in the PDF that read as if nothing had ever been there. Each one now leaves a marked box naming the reason, where the embed belonged. The terminal is then free to stay quiet, because nothing is being hidden.
+A missing image, a video, a note transclusion. The converter used to skip these and mention them on the terminal, which left a hole in the PDF that read as if nothing had ever been there. Each one now leaves a marked box naming the reason, where the embed belonged. The reader of the file learns as much as the person who ran the command.
 
-That is also why the command prints nothing on success. The old build announced its theme and its output path on every run, which is noise once the interesting part is inside the file.
+The command reports itself on every run, naming the theme, the source, the output and anything it skipped. `--quiet` turns that off. It hides nothing, because every skipped embed is marked in the PDF as well.
 
 ## Raw HTML is dropped
 

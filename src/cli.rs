@@ -43,10 +43,11 @@ Examples:
   md2pdf note.md                       writes PDF/note.pdf
   md2pdf note.md -t dark               render dark
   md2pdf notes/post.md -o ~/post.pdf   choose the output path
-  md2pdf note -v                       add the .md, and say what happened
+  md2pdf note -q                       add the .md, and say nothing
 
-Nothing is printed unless something needs saying. Embeds that cannot be drawn,
-such as a video or a missing image, are marked in the PDF where they belong."
+Every run reports the theme, the source, the output, and any embed it could
+not draw. Those embeds are marked in the PDF too, so `--quiet` hides nothing
+that is not already in the file."
 )]
 pub(crate) struct Cli {
     /// The Markdown file to convert. A missing `.md` extension is added.
@@ -61,9 +62,9 @@ pub(crate) struct Cli {
     #[arg(short, long, value_name = "PATH")]
     pub(crate) output: Option<PathBuf>,
 
-    /// Say which theme was used, where the PDF went, and what was skipped.
+    /// Report nothing but errors.
     #[arg(short, long)]
-    pub(crate) verbose: bool,
+    pub(crate) quiet: bool,
 }
 
 /// The path the user named is not there. Look for it somewhere else before
@@ -268,13 +269,13 @@ mod tests {
     }
 
     #[test]
-    fn output_is_silent_unless_asked() {
-        assert!(!parse(&["a.md"]).unwrap().verbose);
-        assert!(parse(&["a.md", "-v"]).unwrap().verbose);
-        assert!(parse(&["a.md", "--verbose"]).unwrap().verbose);
+    fn a_run_reports_itself_unless_silenced() {
+        assert!(!parse(&["a.md"]).unwrap().quiet);
+        assert!(parse(&["a.md", "-q"]).unwrap().quiet);
+        assert!(parse(&["a.md", "--quiet"]).unwrap().quiet);
         assert!(
-            parse(&["a.md", "--quiet"]).is_err(),
-            "quiet is now the default"
+            parse(&["a.md", "--verbose"]).is_err(),
+            "reporting is now the default"
         );
     }
 

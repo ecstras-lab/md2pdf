@@ -40,25 +40,18 @@ fn run() -> Result<(), Failure> {
 
     let warnings = convert(&source_path, &output_path, &cli.theme.build())?;
 
-    if cli.verbose {
-        println!("theme:  {}", cli.theme.label());
-        println!("source: {}", source_path.display());
-
-        for warning in &warnings {
-            println!("skipped: {warning}");
-        }
-
-        println!("output: {}", output_path.display());
-    } else if !warnings.is_empty() {
-        let plural = if warnings.len() == 1 { "" } else { "s" };
-        let verb = if warnings.len() == 1 { "is" } else { "are" };
-
-        report::note(&format!(
-            "{} embed{plural} could not be drawn, and {verb} marked in the PDF. \
-             Run with --verbose to list them.",
-            warnings.len(),
-        ));
+    if cli.quiet {
+        return Ok(());
     }
+
+    report::line("theme", cli.theme.label());
+    report::line("source", &source_path.display().to_string());
+
+    for warning in &warnings {
+        report::skipped(warning);
+    }
+
+    report::line("output", &output_path.display().to_string());
 
     Ok(())
 }

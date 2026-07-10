@@ -9,12 +9,12 @@ md2pdf [OPTIONS] <FILE>
 
   -t, --theme <light|dark>   colour theme, light by default
   -o, --output <PATH>        write the PDF here
-  -v, --verbose              say what happened
+  -q, --quiet                report nothing but errors
 ```
 
 A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` is written to `PDF/notes/2024/post.pdf`.
 
-Nothing is printed unless something needs saying. An embed the converter cannot draw, such as a video, a note transclusion or an image that is not there, leaves a marked box in the PDF that names the reason. The terminal only says how many there were, and `--verbose` lists them.
+Every run reports the theme, the source, the output, and any embed it could not draw. An embed the converter cannot draw, such as a video, a note transclusion or an image that is not there, also leaves a marked box in the PDF that names the reason. So `--quiet` hides nothing that is not already in the file.
 
 `tests/` holds a fixture note that exercises every feature, alongside the image, the video and the note it embeds. Convert it with `md2pdf tests/test.md` to see the whole theme at once.
 

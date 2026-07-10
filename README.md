@@ -36,15 +36,15 @@ The result is one binary, with the fonts inside it, that renders the same docume
 md2pdf note.md                       # writes PDF/note.pdf, light theme
 md2pdf note.md -t dark               # dark theme
 md2pdf notes/post.md -o ~/post.pdf   # choose the output path
-md2pdf note -v                       # add the .md, and say what happened
+md2pdf note -q                       # add the .md, and say nothing
 ```
 
-Nothing is printed unless something needs saying. A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` lands at `PDF/notes/2024/post.pdf`.
+Every run reports the theme, the source, the output, and any embed it could not draw. A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` lands at `PDF/notes/2024/post.pdf`.
 
 ```
   -t, --theme <light|dark>   colour theme, light by default
   -o, --output <PATH>        write the PDF here
-  -v, --verbose              say which theme, where it went, what was skipped
+  -q, --quiet                report nothing but errors
 ```
 
 ## Building
@@ -60,55 +60,19 @@ cargo build --release
 The fixture note under `tests/` exercises every feature at once, alongside the image, the video and the note it embeds.
 
 ```bash
-cargo run -- tests/test.md -v
+cargo run -- tests/test.md
 ```
 
 ## How It Works
 
 Four stages, one module each.
 
-1. `frontmatter.rs` splits the YAML block off the top and sorts each value into one of the five shapes the properties table draws.
-2. `markdown.rs` rewrites Obsidian embeds, parses the rest with `pulldown-cmark`, and walks the event stream to emit Typst markup. Every run of text is emitted as a Typst string literal, so no character in a note can be mistaken for syntax.
+1. `markdown/frontmatter.rs` splits the YAML block off the top and sorts each value into one of the five shapes the properties table draws.
+2. `markdown/` rewrites Obsidian embeds, parses the rest with `pulldown-cmark`, and walks the event stream to emit Typst markup. Every run of text is emitted as a Typst string literal, so no character in a note can be mistaken for syntax.
 3. `document/` renders the theme as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body.
 4. `document/compile.rs` hands the whole source to Typst with the embedded fonts and the in memory files, then exports the PDF.
 
 `assets/theme.typ` is the stylesheet, written in Typst rather than CSS. The body never styles anything itself. It only calls the helpers the stylesheet defines.
-
-## Project Structure
-
-One module per stage of the pipeline, and one job per file.
-
-```
-├── assets/
-│   ├── fonts/              # four families, embedded into the binary
-│   └── theme.typ           # the stylesheet, in Typst
-├── docs/
-│   ├── architecture.md     # what the pieces are
-│   └── decisions.md        # why they are that way
-├── media/                  # the graphics in this file
-├── src/
-│   ├── main.rs             # entry point, and the conversion itself
-│   ├── cli.rs              # what the user typed, and where it points
-│   ├── report.rs           # how failures reach the terminal
-│   ├── markdown/
-│   │   ├── mod.rs          # render(), the one public entry
-│   │   ├── frontmatter.rs  # YAML to properties
-│   │   ├── preprocess.rs   # Obsidian embeds to CommonMark
-│   │   ├── literal.rs      # text to Typst string literals
-│   │   ├── images.rs       # the embeds it can draw, and the ones it cannot
-│   │   ├── inline.rs       # highlights, comments, tags, code, math
-│   │   ├── properties.rs   # the properties block
-│   │   └── renderer.rs     # the event walk
-│   ├── theme/
-│   │   ├── mod.rs          # the palette and the callout table
-│   │   ├── color.rs        # hex and hsl
-│   │   ├── icons.rs        # the stylesheet's inline SVG icons
-│   │   └── tmtheme.rs      # hljs colours to a TextMate scheme
-│   └── document/
-│       ├── mod.rs          # theme to Typst bindings, source assembly
-│       └── compile.rs      # Typst engine, fonts, PDF export
-└── tests/                  # a fixture note and the media it embeds
-```
 
 ## Fidelity
 
