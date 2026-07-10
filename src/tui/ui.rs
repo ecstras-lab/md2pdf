@@ -6,7 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Padding, Paragraph};
+use ratatui::widgets::{Block, BorderType, List, ListItem, Padding, Paragraph};
 
 use crate::cli::ThemeName;
 use crate::theme::{self, Theme};
@@ -28,9 +28,7 @@ struct Palette {
     on_primary: Color,
     warning: Color,
     danger: Color,
-    /// The subtle fill behind the export cards.
-    fill: Color,
-    /// The edge on the source card, the blue the footnotes wear.
+    /// The label over the note, the blue the footnotes wear.
     flow: Color,
 }
 
@@ -46,7 +44,6 @@ impl Palette {
             on_primary: rgb(theme::PRIMARY_FOREGROUND),
             warning: rgb(theme::callout_color("warning")),
             danger: rgb(theme::callout_color("danger")),
-            fill: rgb(theme.secondary),
             flow: rgb(theme::FOOTNOTE_ACCENT),
         }
     }
@@ -207,90 +204,69 @@ fn search_line(
 }
 
 /// What will be written, and where, as a note flowing down into a PDF. The one
-/// panel that used to hold the render.
+/// panel that used to hold the render. Each value sits under a small coloured
+/// label rather than inside a card, the note under the blue the footnotes wear
+/// and the destination under the accent.
 fn draw_export(
     frame: &mut Frame,
     area: Rect,
     app: &App,
     palette: &Palette,
 ) {
-    let block = palette.panel("export").padding(Padding::horizontal(1));
+    let block = palette.panel("export").padding(Padding::new(3, 1, 1, 0));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let [_, from, arrow, to, _, action] = Layout::vertical([
+    let [
+        note_label,
+        note_name,
+        arrow,
+        save_label,
+        destination,
+        _,
+        action,
+    ] = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(3),
         Constraint::Length(1),
-        Constraint::Length(3),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(1),
     ])
     .areas(inner);
 
-    let note = app
+    frame.render_widget(
+        Line::from(Span::styled("note", Style::new().fg(palette.flow))),
+        note_label,
+    );
+
+    let name = app
         .selected()
         .map(notes::label)
         .unwrap_or_else(|| "no note selected".to_owned());
 
-    card(
-        frame,
-        from,
-        palette.flow,
-        "note",
+    frame.render_widget(
         Line::from(Span::styled(
-            note,
+            name,
             Style::new().fg(palette.foreground).bold(),
         )),
-        palette,
+        note_name,
     );
 
     frame.render_widget(
-        Paragraph::new(Span::styled("↓", Style::new().fg(palette.muted))).centered(),
+        Line::from(Span::styled("↓", Style::new().fg(palette.muted))),
         arrow,
     );
 
-    card(
-        frame,
-        to,
-        palette.primary,
-        "save to",
-        save_value(app, palette),
-        palette,
+    frame.render_widget(
+        Line::from(Span::styled("save to", Style::new().fg(palette.primary))),
+        save_label,
     );
 
+    frame.render_widget(save_value(app, palette), destination);
+
     draw_action(frame, action, app, palette);
-}
-
-/// A filled card with a coloured left edge, in the manner of the document's own
-/// callouts. A small label sits above the value.
-fn card(
-    frame: &mut Frame,
-    area: Rect,
-    accent: Color,
-    label: &str,
-    value: Line<'static>,
-    palette: &Palette,
-) {
-    let block = Block::new()
-        .borders(Borders::LEFT)
-        .border_type(BorderType::Thick)
-        .border_style(Style::new().fg(accent))
-        .style(Style::new().bg(palette.fill))
-        .padding(Padding::new(2, 1, 0, 0));
-
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let text = vec![
-        Line::from(Span::styled(
-            label.to_owned(),
-            Style::new().fg(palette.muted),
-        )),
-        value,
-    ];
-
-    frame.render_widget(Paragraph::new(text), inner);
 }
 
 /// The save value, editable in place. While it is being typed the folder carries
