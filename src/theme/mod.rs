@@ -8,7 +8,7 @@ mod color;
 pub use color::Color;
 
 /// Accent hues, shared by heading rules and list markers.
-const LEVEL_1: Color = Color::hex(0xe11d48);
+const LEVEL_1: Color = Color::hex(0xe95118);
 const LEVEL_2: Color = Color::hex(0x8b5cf6);
 const LEVEL_3: Color = Color::hex(0xf59e0b);
 const LEVEL_4: Color = Color::hex(0x10b981);
