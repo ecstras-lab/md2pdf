@@ -60,6 +60,7 @@ Examples:
   md2pdf note.md -t dark               render dark
   md2pdf notes/post.md -o ~/post.pdf   choose the output path
   md2pdf note -q                       add the .md, and say nothing
+  md2pdf -i                            browse and preview, then export
 
 Every run reports the theme, the source, the output, and any embed it could
 not draw. Those embeds are marked in the PDF too, so `--quiet` hides nothing
@@ -70,12 +71,16 @@ Colour is on whenever a terminal is reading. NO_COLOR, CLICOLOR_FORCE and
 )]
 pub(crate) struct Cli {
     /// The Markdown file to convert. A missing `.md` extension is added.
-    #[arg(value_name = "FILE")]
-    pub(crate) file: PathBuf,
+    #[arg(value_name = "FILE", required_unless_present = "interactive")]
+    pub(crate) file: Option<PathBuf>,
 
-    /// Colour theme to render with.
-    #[arg(short, long, value_enum, default_value_t = ThemeName::Light)]
-    pub(crate) theme: ThemeName,
+    /// Browse notes and preview the page before writing it.
+    #[arg(short, long)]
+    pub(crate) interactive: bool,
+
+    /// Colour theme. A file is light by default, the interface dark.
+    #[arg(short, long, value_enum)]
+    pub(crate) theme: Option<ThemeName>,
 
     /// Write the PDF here instead of PDF/<source directory>/<name>.pdf.
     #[arg(short, long, value_name = "PATH")]
@@ -88,6 +93,18 @@ pub(crate) struct Cli {
     /// When to colour what is printed.
     #[arg(long, value_name = "WHEN", value_enum, default_value_t = ColorChoice::Auto)]
     pub(crate) color: ColorChoice,
+}
+
+impl Cli {
+    /// The theme to render with, filling in the per-mode default when the flag
+    /// was left off. A page on paper reads best light. A page on a dark
+    /// terminal reads best dark, and matches the interface around it.
+    pub(crate) fn chosen_theme(&self) -> ThemeName {
+        self.theme.unwrap_or(match self.interactive {
+            true => ThemeName::Dark,
+            false => ThemeName::Light,
+        })
+    }
 }
 
 /// Reads the command line, having first settled how the output is to be
@@ -305,17 +322,29 @@ mod tests {
     }
 
     #[test]
-    fn the_theme_defaults_to_light_and_can_be_named() {
-        assert_eq!(parse(&["a.md"]).unwrap().theme, ThemeName::Light);
+    fn the_theme_can_be_named() {
         assert_eq!(
             parse(&["a.md", "--theme", "dark"]).unwrap().theme,
-            ThemeName::Dark
+            Some(ThemeName::Dark)
         );
         assert_eq!(
             parse(&["a.md", "-t", "light"]).unwrap().theme,
+            Some(ThemeName::Light)
+        );
+        assert_eq!(parse(&["a.md"]).unwrap().theme, None);
+        assert!(parse(&["a.md", "--theme", "purple"]).is_err());
+    }
+
+    /// A file on paper defaults to light. The interface, sitting on a dark
+    /// terminal, defaults to dark. A named theme wins over either.
+    #[test]
+    fn the_theme_default_follows_the_mode() {
+        assert_eq!(parse(&["a.md"]).unwrap().chosen_theme(), ThemeName::Light);
+        assert_eq!(parse(&["-i"]).unwrap().chosen_theme(), ThemeName::Dark);
+        assert_eq!(
+            parse(&["-i", "-t", "light"]).unwrap().chosen_theme(),
             ThemeName::Light
         );
-        assert!(parse(&["a.md", "--theme", "purple"]).is_err());
     }
 
     /// The `--white` flag is gone, but the word it used is still what reaches
@@ -324,7 +353,7 @@ mod tests {
     fn white_is_accepted_as_a_name_for_the_light_theme() {
         assert_eq!(
             parse(&["a.md", "--theme", "white"]).unwrap().theme,
-            ThemeName::Light
+            Some(ThemeName::Light)
         );
     }
 
@@ -356,7 +385,7 @@ mod tests {
     #[test]
     fn flags_may_follow_the_file() {
         let cli = parse(&["test.md", "--theme", "dark", "--output", "test.pdf"]).unwrap();
-        assert_eq!(cli.theme, ThemeName::Dark);
+        assert_eq!(cli.theme, Some(ThemeName::Dark));
         assert_eq!(cli.output.unwrap(), PathBuf::from("test.pdf"));
     }
 

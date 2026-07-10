@@ -95,7 +95,7 @@ pub fn wrote(
 }
 
 /// A size a person can hold in their head, rather than a byte count.
-fn size(bytes: usize) -> String {
+pub fn size(bytes: usize) -> String {
     const UNIT: f64 = 1024.0;
 
     let bytes = bytes as f64;
@@ -111,7 +111,7 @@ fn size(bytes: usize) -> String {
 
 /// Milliseconds below a second, seconds above it. A run reported as `0.0s`
 /// tells nobody anything.
-fn duration(took: Duration) -> String {
+pub fn duration(took: Duration) -> String {
     if took.as_secs() == 0 {
         format!("{}ms", took.as_millis())
     } else {

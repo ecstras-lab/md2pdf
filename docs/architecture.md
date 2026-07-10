@@ -7,13 +7,14 @@ md2pdf turns an Obsidian flavoured Markdown note into a themed PDF. There is no 
 ```
 md2pdf [OPTIONS] <FILE>
 
-  -t, --theme <light|dark>       colour theme, light by default
+  -i, --interactive              browse and preview, then export
+  -t, --theme <light|dark>       colour theme
   -o, --output <PATH>            write the PDF here
   -q, --quiet                    report nothing but errors
       --color <auto|always|never>
 ```
 
-A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` is written to `PDF/notes/2024/post.pdf`.
+A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` is written to `PDF/notes/2024/post.pdf`. `--interactive` is the only way to leave the file out, because there it is picked from a list. It also flips the default theme, since a file on paper reads best light and a page on a dark terminal reads best dark.
 
 Every run reports the theme, the source, the output, how large the PDF came out and how long it took, along with any embed the converter could not draw. An embed it cannot draw, such as a video, a note transclusion or an image that is not there, also leaves a marked box in the PDF that names the reason. So `--quiet` hides nothing that is not already in the file.
 
@@ -28,7 +29,22 @@ Each stage lives in one module and hands a value to the next.
 1. `markdown/frontmatter.rs` splits the YAML block off the top of the note. Every value is sorted into one of the five shapes that the properties table knows how to draw, namely tags, link, date, boolean and text. A block that will not parse is still stripped, so its keys never leak into the document.
 2. `markdown/` rewrites Obsidian embeds in `preprocess.rs`, parses the rest with `pulldown-cmark`, and walks the event stream in `renderer.rs` to emit Typst markup. `images.rs` collects the bytes of every local image it resolves.
 3. `document/mod.rs` renders the `Theme` as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body. It also builds the two kinds of file that the Typst source reads by path, the syntax theme and the icons.
-4. `document/compile.rs` hands the whole source to Typst along with the embedded fonts and those in memory files, then exports the PDF.
+4. `document/compile.rs` hands the whole source to Typst along with the embedded fonts and those in memory files. What comes back is a laid out document, which it exports either as a PDF or as pixels.
+
+`convert.rs` runs the first three stages and hands the fourth whatever it asked for. Both front ends go through it, so a preview and a saved file are never built two different ways.
+
+## The interactive front end
+
+`tui/` draws a note list, the page beside it, and everything the converter had to skip. It is built on ratatui, and it is a plain loop rather than an async runtime. The rule the loop keeps is that nothing slow runs on it, so the keyboard is always answered at once.
+
+- `tui/app.rs` holds the state and is the only place a keypress changes anything.
+- `tui/preview.rs` owns the three slow things, each on its own thread. A note is typeset and rendered to pixels. A slice of those pixels is encoded for the terminal every time the view moves. And a finished page is written to a PDF. The main thread only draws the latest result each hands back.
+- `tui/ui.rs` draws. It reads the state and writes none of it, apart from the pane size, which nothing knows until the interface has been drawn into it.
+- `tui/notes.rs` finds the notes and narrows them by a query.
+
+The page is rendered at whatever scale makes it exactly as wide as the pane, so widening the pane renders the note again and heightening it only shows more. Scrolling cuts a taller slice out of the same image. `ratatui-image` asks the terminal what it can draw, in sixels, kitty graphics or iTerm2 graphics, and falls back to unicode half blocks, which every terminal can draw.
+
+Each of those slow things carries a number, and a result numbered lower than what is already on screen is dropped. That is how a page the reader has scrolled past, or a note they have moved on from, never lands after the fact.
 
 ## Where the styling lives
 

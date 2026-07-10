@@ -11,12 +11,23 @@ anstream = "1.0"
 anstyle = "1.0"
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
+# The preview turns a rendered page into pixels. No codec is read or written,
+# so every image format `image` can decode is left out of the build.
+image = { version = "0.25", default-features = false }
 pulldown-cmark = "0.13.4"
+ratatui = "0.30"
+# `image-defaults` drags in an AV1 encoder, and `chafa-dyn` wants a system
+# library through pkg-config. Neither is wanted for drawing a page.
+ratatui-image = { version = "11.0", default-features = false, features = ["crossterm"] }
 regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 tex2typst-rs = "0.4.1"
 two-face = { version = "0.5.1", default-features = false, features = ["syntect-fancy"] }
 typst-as-lib = "0.16.0"
+# `typst-layout` names the compiled document that `typst-pdf` and `typst-render`
+# both take. Both already depend on it.
+typst-layout = "0.15.0"
 typst-pdf = "0.15.0"
+typst-render = "0.15.0"
 urlencoding = "2.1"

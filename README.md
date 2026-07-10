@@ -33,6 +33,7 @@ It is one binary with the fonts already inside it. Nothing to install alongside 
 * **Math:** LaTeX, both inline and as its own centred block.
 * **Everything else:** image embeds, `==highlights==`, `%%comments%%`, `#tags`, task lists, tables, nested lists, strikethrough, and quotes.
 * **Two themes:** light and dark.
+* **An interactive mode:** browse your notes and watch the real page render beside them, before you commit to a file.
 
 ## Install
 
@@ -51,9 +52,11 @@ md2pdf note.md                       # writes PDF/note.pdf
 md2pdf note.md -t dark               # dark theme
 md2pdf notes/post.md -o ~/post.pdf   # choose where it lands
 md2pdf note -q                       # add the .md, and say nothing
+md2pdf -i                            # browse, preview, then export
 ```
 
 ```
+  -i, --interactive              browse and preview, then export
   -t, --theme <light|dark>       colour theme, light by default
   -o, --output <PATH>            write the PDF here
   -q, --quiet                    report nothing but errors
@@ -71,6 +74,26 @@ Every run says what it did.
 ```
 
 Colour turns itself on when a terminal is reading and off when anything else is. `NO_COLOR`, `CLICOLOR_FORCE` and `--color` each get a say.
+
+## Interactive mode
+
+`md2pdf -i` opens a browser for your notes with the page rendered next to them. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way. It is the real page, drawn by the same typesetter that writes the PDF, so what you scroll through is what you get. Press enter and it writes exactly those pages to disk.
+
+```
+╭ notes ───────────────────────╮╭ preview ─────────────────────────────╮
+│  README.md                   ││                                      │
+│› tests/test.md               ││          ╔══ H1 Heading ══╗          │
+│  docs/architecture.md        ││          ║   properties   ║          │
+╰ / to search ─────────────────╯╰────────────────────────────── top ───╯
+╭ skipped ─────────────────────────────────────────────────────────────╮
+│ ! video embeds are not supported: 2026-03-26 11-50-04.mp4            │
+╰──────────────────────────────────────────────────────────────────────╯
+ ↑↓ note   t theme   ⏎ export   pgup/pgdn scroll   / search   q quit
+```
+
+Switching the theme retints the interface along with the page, so you can see the choice rather than read it. Type `/` to filter the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`.
+
+If your terminal speaks sixel, kitty graphics or iTerm2 graphics, the page is drawn in full colour at whatever resolution the pane gives it. Anything else falls back to unicode half blocks, which works everywhere.
 
 ## What it will not do
 
