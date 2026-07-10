@@ -54,9 +54,10 @@ md2pdf note -q                       # add the .md, and say nothing
 ```
 
 ```
-  -t, --theme <light|dark>   colour theme, light by default
-  -o, --output <PATH>        write the PDF here
-  -q, --quiet                report nothing but errors
+  -t, --theme <light|dark>       colour theme, light by default
+  -o, --output <PATH>            write the PDF here
+  -q, --quiet                    report nothing but errors
+      --color <auto|always|never>
 ```
 
 A missing `.md` is added for you. Without an output path the PDF mirrors your folders under `PDF/`, so `notes/2024/post.md` lands at `PDF/notes/2024/post.pdf`.
@@ -66,8 +67,10 @@ Every run says what it did.
 ```
   theme dark
  source notes/post.md
- output PDF/notes/post.pdf
+ output PDF/notes/post.pdf (155 KB in 1.4s)
 ```
+
+Colour turns itself on when a terminal is reading and off when anything else is. `NO_COLOR`, `CLICOLOR_FORCE` and `--color` each get a say.
 
 ## What it will not do
 

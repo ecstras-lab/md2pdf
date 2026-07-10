@@ -7,11 +7,10 @@ mod report;
 mod theme;
 
 use std::path::Path;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
-use clap::Parser;
 
-use cli::Cli;
 use markdown::frontmatter;
 use report::Failure;
 use theme::Theme;
@@ -26,7 +25,7 @@ fn main() {
 }
 
 fn run() -> Result<(), Failure> {
-    let cli = Cli::parse();
+    let cli = cli::parse();
     let source_path = cli::with_markdown_extension(cli.file.clone());
 
     if !source_path.is_file() {
@@ -38,7 +37,9 @@ fn run() -> Result<(), Failure> {
         None => cli::default_output_path(&source_path)?,
     };
 
-    let warnings = convert(&source_path, &output_path, &cli.theme.build())?;
+    let started = Instant::now();
+    let outcome = convert(&source_path, &output_path, &cli.theme.build())?;
+    let took = started.elapsed();
 
     if cli.quiet {
         return Ok(());
@@ -47,21 +48,28 @@ fn run() -> Result<(), Failure> {
     report::line("theme", cli.theme.label());
     report::line("source", &source_path.display().to_string());
 
-    for warning in &warnings {
+    for warning in &outcome.warnings {
         report::skipped(warning);
     }
 
-    report::line("output", &output_path.display().to_string());
+    report::wrote(&output_path.display().to_string(), outcome.bytes, took);
 
     Ok(())
 }
 
-/// Converts the file and returns everything that had to be skipped.
+/// What a run has to say for itself once the file is on disk.
+struct Outcome {
+    /// Everything that had to be skipped.
+    warnings: Vec<String>,
+    /// The size of the PDF.
+    bytes: usize,
+}
+
 fn convert(
     source_path: &Path,
     output_path: &Path,
     theme: &Theme,
-) -> Result<Vec<String>> {
+) -> Result<Outcome> {
     let markdown = std::fs::read_to_string(source_path)
         .with_context(|| format!("could not read {}", source_path.display()))?;
 
@@ -79,6 +87,7 @@ fn convert(
     let source = document::source(theme, &rendered.body);
 
     let pdf = document::compile::to_pdf(&source, &files)?;
+    let bytes = pdf.len();
 
     if let Some(parent) = output_path.parent() {
         std::fs::create_dir_all(parent)
@@ -88,5 +97,5 @@ fn convert(
     std::fs::write(output_path, pdf)
         .with_context(|| format!("could not write {}", output_path.display()))?;
 
-    Ok(warnings)
+    Ok(Outcome { warnings, bytes })
 }

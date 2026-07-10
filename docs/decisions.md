@@ -44,6 +44,14 @@ A missing image, a video, a note transclusion. The converter used to skip these 
 
 The command reports itself on every run, naming the theme, the source, the output and anything it skipped. `--quiet` turns that off. It hides nothing, because every skipped embed is marked in the PDF as well.
 
+## The terminal is a library's problem
+
+The first version of `report.rs` asked `IsTerminal` whether anyone was watching, looked for `NO_COLOR`, and decided per stream whether to emit escape codes. It missed `CLICOLOR`, `CLICOLOR_FORCE` and `TERM=dumb`. Worse, on Windows a console will not act on an escape sequence until something turns escape sequence handling on, so a run under `conhost` printed the codes instead of obeying them.
+
+`anstream` answers all of that, and it was already in the tree underneath clap, so depending on it directly costs nothing to build. Every line the report prints is now painted without asking, and the stream strips the paint back off on the way to a pipe or a file.
+
+clap draws its colour choice from the same global, which is what makes `--color never` reach an error the parser raised before any of this code ran. The flag has to be found in the raw arguments and applied first, because the parser that owns it is also the thing that prints. Once clap has run and validated the word, the choice is applied again from the parsed value, which is the one that survives.
+
 ## Raw HTML is dropped
 
 The browser build rendered `<div style="...">` and `<details>` natively. Typst has no HTML engine, so there is nothing to render them with. The alternatives were to strip the tags and keep the inner text, or to print the HTML source verbatim.

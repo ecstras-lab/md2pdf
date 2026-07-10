@@ -7,14 +7,17 @@ md2pdf turns an Obsidian flavoured Markdown note into a themed PDF. There is no 
 ```
 md2pdf [OPTIONS] <FILE>
 
-  -t, --theme <light|dark>   colour theme, light by default
-  -o, --output <PATH>        write the PDF here
-  -q, --quiet                report nothing but errors
+  -t, --theme <light|dark>       colour theme, light by default
+  -o, --output <PATH>            write the PDF here
+  -q, --quiet                    report nothing but errors
+      --color <auto|always|never>
 ```
 
 A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` is written to `PDF/notes/2024/post.pdf`.
 
-Every run reports the theme, the source, the output, and any embed it could not draw. An embed the converter cannot draw, such as a video, a note transclusion or an image that is not there, also leaves a marked box in the PDF that names the reason. So `--quiet` hides nothing that is not already in the file.
+Every run reports the theme, the source, the output, how large the PDF came out and how long it took, along with any embed the converter could not draw. An embed it cannot draw, such as a video, a note transclusion or an image that is not there, also leaves a marked box in the PDF that names the reason. So `--quiet` hides nothing that is not already in the file.
+
+Colour is negotiated by `anstream`. It reads `NO_COLOR`, `CLICOLOR` and `CLICOLOR_FORCE`, asks whether a terminal is reading the stream it is about to write on, and on Windows either turns on escape sequence handling or falls back to the console API. `--color` overrides all of it. `cli.rs` finds that flag in the raw arguments and settles the choice before clap runs, because clap prints its own help and its own errors through the same global, from inside the parser the flag belongs to.
 
 `tests/` holds a fixture note that exercises every feature, alongside the image, the video and the note it embeds. Convert it with `md2pdf tests/test.md` to see the whole theme at once.
 

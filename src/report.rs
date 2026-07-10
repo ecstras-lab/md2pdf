@@ -1,15 +1,9 @@
 //! How the command talks to a person.
 
-use std::io::IsTerminal;
+use std::time::Duration;
 
-use clap::builder::styling::{AnsiColor, Reset, Style};
-
-/// The run report goes to stdout. Failures go to stderr. Each stream decides
-/// on its own whether anyone is there to see the colour.
-enum Stream {
-    Out,
-    Err,
-}
+use anstream::{eprintln, println};
+use anstyle::{AnsiColor, Style};
 
 /// Wide enough for the longest label the report prints.
 const LABEL_WIDTH: usize = 7;
@@ -41,18 +35,20 @@ impl Failure {
         &self.hints
     }
 
+    /// The shape rustc and cargo use, down to the colon inside the colour and
+    /// the seven spaces that carry a wrapped message under the headline.
     pub fn print(&self) {
         let mut lines = self.message.lines();
         let headline = lines.next().unwrap_or_default();
 
-        eprintln!("{}: {headline}", bold("error", AnsiColor::Red, Stream::Err));
+        eprintln!("{} {headline}", bold("error:", AnsiColor::Red));
 
         for line in lines {
             eprintln!("       {}", dim(line));
         }
 
         for hint in &self.hints {
-            eprintln!("  {}: {hint}", bold("help", AnsiColor::Cyan, Stream::Err));
+            eprintln!("  {} {hint}", bold("help:", AnsiColor::Cyan));
         }
     }
 }
@@ -84,6 +80,45 @@ pub fn skipped(reason: &str) {
     println!("{} {reason}", label_for("skipped", AnsiColor::Yellow));
 }
 
+/// The line that closes a run. The path is the part a person reaches for, so
+/// it is the only value the report emphasises.
+pub fn wrote(
+    path: &str,
+    bytes: usize,
+    took: Duration,
+) {
+    let label = label_for("output", AnsiColor::Cyan);
+    let path = paint(path, Style::new().bold());
+    let detail = dim(&format!("({} in {})", size(bytes), duration(took)));
+
+    println!("{label} {path} {detail}");
+}
+
+/// A size a person can hold in their head, rather than a byte count.
+fn size(bytes: usize) -> String {
+    const UNIT: f64 = 1024.0;
+
+    let bytes = bytes as f64;
+
+    if bytes < UNIT {
+        format!("{bytes:.0} B")
+    } else if bytes < UNIT * UNIT {
+        format!("{:.0} KB", bytes / UNIT)
+    } else {
+        format!("{:.1} MB", bytes / (UNIT * UNIT))
+    }
+}
+
+/// Milliseconds below a second, seconds above it. A run reported as `0.0s`
+/// tells nobody anything.
+fn duration(took: Duration) -> String {
+    if took.as_secs() == 0 {
+        format!("{}ms", took.as_millis())
+    } else {
+        format!("{:.1}s", took.as_secs_f64())
+    }
+}
+
 /// Labels are padded before they are painted, since escape codes have width
 /// to a formatter and none to an eye.
 fn label_for(
@@ -91,44 +126,31 @@ fn label_for(
     color: AnsiColor,
 ) -> String {
     let padded = format!("{label:>LABEL_WIDTH$}");
-    bold(&padded, color, Stream::Out)
+    bold(&padded, color)
 }
 
 fn bold(
     text: &str,
     color: AnsiColor,
-    stream: Stream,
 ) -> String {
-    let style = Style::new().bold().fg_color(Some(color.into()));
-    paint(text, style, colored(stream))
+    paint(text, Style::new().bold().fg_color(Some(color.into())))
 }
 
 fn dim(text: &str) -> String {
-    paint(text, Style::new().dimmed(), colored(Stream::Err))
+    paint(text, Style::new().dimmed())
 }
 
+/// Every line this module prints is painted, and every line leaves through
+/// `anstream`, which decides what survives. It reads `NO_COLOR`, `CLICOLOR`
+/// and `CLICOLOR_FORCE`, asks whether a terminal is on the far end of the
+/// stream it is writing to, and on Windows either turns on escape sequence
+/// handling or falls back to the console API. Text that reaches a pipe or a
+/// file reaches it plain.
 fn paint(
     text: &str,
     style: Style,
-    enabled: bool,
 ) -> String {
-    if !enabled {
-        return text.to_owned();
-    }
-
-    format!("{}{text}{}", style.render(), Reset.render())
-}
-
-/// Colour is for a person at a terminal. A pipe or `NO_COLOR` gets plain text.
-fn colored(stream: Stream) -> bool {
-    if std::env::var_os("NO_COLOR").is_some() {
-        return false;
-    }
-
-    match stream {
-        Stream::Out => std::io::stdout().is_terminal(),
-        Stream::Err => std::io::stderr().is_terminal(),
-    }
+    format!("{}{text}{}", style.render(), style.render_reset())
 }
 
 #[cfg(test)]
@@ -137,22 +159,23 @@ mod tests {
 
     #[test]
     fn painting_wraps_the_text_and_puts_it_back() {
-        let style = Style::new().bold().fg_color(Some(AnsiColor::Red.into()));
-        let painted = paint("error", style, true);
+        let painted = paint("error", Style::new().bold());
 
         assert!(
             painted.starts_with('\u{1b}'),
             "no escape sequence: {painted:?}"
         );
         assert!(painted.contains("error"));
-        assert!(painted.ends_with(&Reset.render().to_string()));
+        assert!(painted.ends_with("\u{1b}[0m"));
     }
 
+    /// Whatever the escape codes, `anstream` strips them back to this.
     #[test]
-    fn a_pipe_gets_the_text_and_nothing_else() {
-        let painted = paint("error", Style::new().dimmed(), false);
+    fn the_text_survives_the_paint_unchanged() {
+        let painted = paint("error", Style::new().dimmed());
+        let plain = anstream::adapter::strip_str(&painted).to_string();
 
-        assert_eq!(painted, "error");
+        assert_eq!(plain, "error");
     }
 
     /// The labels line up in a column, and the escape codes must not count
@@ -165,5 +188,20 @@ mod tests {
             assert_eq!(padded.chars().count(), LABEL_WIDTH);
             assert!(padded.ends_with(label));
         }
+    }
+
+    #[test]
+    fn a_size_is_scaled_to_the_largest_unit_it_fills() {
+        assert_eq!(size(512), "512 B");
+        assert_eq!(size(2048), "2 KB");
+        assert_eq!(size(612 * 1024), "612 KB");
+        assert_eq!(size(3 * 1024 * 1024 / 2), "1.5 MB");
+    }
+
+    #[test]
+    fn a_run_under_a_second_is_reported_in_milliseconds() {
+        assert_eq!(duration(Duration::from_millis(40)), "40ms");
+        assert_eq!(duration(Duration::from_millis(999)), "999ms");
+        assert_eq!(duration(Duration::from_millis(1200)), "1.2s");
     }
 }

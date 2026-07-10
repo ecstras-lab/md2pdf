@@ -3,15 +3,30 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
+use anstyle::{AnsiColor, Style};
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::builder::Styles;
+use clap::{ColorChoice, Parser, ValueEnum};
 
 use crate::report::Failure;
 use crate::theme::Theme;
 
+/// The help and the run report share one palette, so `--help` and the lines a
+/// run prints afterwards look like they came from the same program.
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Cyan.on_default().bold())
+    .usage(AnsiColor::Cyan.on_default().bold())
+    .literal(Style::new().bold())
+    .placeholder(AnsiColor::Cyan.on_default())
+    .error(AnsiColor::Red.on_default().bold())
+    .valid(AnsiColor::Cyan.on_default().bold())
+    .invalid(AnsiColor::Yellow.on_default().bold());
+
 #[derive(Clone, Copy, PartialEq, Debug, ValueEnum)]
 pub(crate) enum ThemeName {
-    /// `white` is accepted because the flag it replaced was named `--white`.
+    // A doc comment here would be printed under `--help` as the meaning of the
+    // word `light`, which is a thing nobody needs told. `white` is accepted
+    // because the flag this replaced was named `--white`.
     #[value(alias = "white")]
     Light,
     Dark,
@@ -38,6 +53,7 @@ impl ThemeName {
     name = "md2pdf",
     version,
     about = "Convert an Obsidian-flavoured Markdown file to a themed PDF",
+    styles = STYLES,
     after_help = "\
 Examples:
   md2pdf note.md                       writes PDF/note.pdf
@@ -47,7 +63,10 @@ Examples:
 
 Every run reports the theme, the source, the output, and any embed it could
 not draw. Those embeds are marked in the PDF too, so `--quiet` hides nothing
-that is not already in the file."
+that is not already in the file.
+
+Colour is on whenever a terminal is reading. NO_COLOR, CLICOLOR_FORCE and
+--color all have a say in that."
 )]
 pub(crate) struct Cli {
     /// The Markdown file to convert. A missing `.md` extension is added.
@@ -65,6 +84,53 @@ pub(crate) struct Cli {
     /// Report nothing but errors.
     #[arg(short, long)]
     pub(crate) quiet: bool,
+
+    /// When to colour what is printed.
+    #[arg(long, value_name = "WHEN", value_enum, default_value_t = ColorChoice::Auto)]
+    pub(crate) color: ColorChoice,
+}
+
+/// Reads the command line, having first settled how the output is to be
+/// coloured.
+pub(crate) fn parse() -> Cli {
+    if let Some(choice) = color_from(std::env::args().skip(1)) {
+        use_color(choice);
+    }
+
+    let cli = Cli::parse();
+    use_color(cli.color);
+
+    cli
+}
+
+/// clap prints `--help` and its own errors from inside the parser, drawing the
+/// choice from the same place `anstream` does. So `--color` has to be settled
+/// before the parser that owns it has ever run. This pass is lenient, and a
+/// word it does not know is left for clap to reject with a proper message.
+fn color_from(mut args: impl Iterator<Item = String>) -> Option<ColorChoice> {
+    while let Some(arg) = args.next() {
+        let word = if arg == "--color" {
+            args.next()?
+        } else if let Some(word) = arg.strip_prefix("--color=") {
+            word.to_owned()
+        } else {
+            continue;
+        };
+
+        return ColorChoice::from_str(&word, true).ok();
+    }
+
+    None
+}
+
+/// Hands the choice to every stream the program prints on.
+fn use_color(choice: ColorChoice) {
+    match choice {
+        ColorChoice::Auto => anstream::ColorChoice::Auto,
+        ColorChoice::Always => anstream::ColorChoice::Always,
+        ColorChoice::Never => anstream::ColorChoice::Never,
+    }
+    .write_global();
 }
 
 /// The path the user named is not there. Look for it somewhere else before
@@ -292,5 +358,45 @@ mod tests {
         let cli = parse(&["test.md", "--theme", "dark", "--output", "test.pdf"]).unwrap();
         assert_eq!(cli.theme, ThemeName::Dark);
         assert_eq!(cli.output.unwrap(), PathBuf::from("test.pdf"));
+    }
+
+    #[test]
+    fn colour_is_automatic_until_it_is_named() {
+        assert_eq!(parse(&["a.md"]).unwrap().color, ColorChoice::Auto);
+        assert_eq!(
+            parse(&["a.md", "--color", "never"]).unwrap().color,
+            ColorChoice::Never
+        );
+        assert_eq!(
+            parse(&["a.md", "--color=always"]).unwrap().color,
+            ColorChoice::Always
+        );
+        assert!(parse(&["a.md", "--color", "beige"]).is_err());
+    }
+
+    fn scan(args: &[&str]) -> Option<ColorChoice> {
+        color_from(args.iter().map(|arg| (*arg).to_owned()))
+    }
+
+    /// The pre-scan runs before clap and has to read the flag both ways round,
+    /// wherever on the line it lands.
+    #[test]
+    fn the_colour_flag_is_found_ahead_of_the_parser() {
+        assert_eq!(
+            scan(&["a.md", "--color", "never"]),
+            Some(ColorChoice::Never)
+        );
+        assert_eq!(scan(&["--color=always", "a.md"]), Some(ColorChoice::Always));
+        assert_eq!(scan(&["a.md", "--color", "AUTO"]), Some(ColorChoice::Auto));
+    }
+
+    /// Nothing to say is said by saying nothing, and clap gets to be the one
+    /// that complains about a word it does not know.
+    #[test]
+    fn a_colour_the_pre_scan_cannot_read_is_left_for_clap() {
+        assert_eq!(scan(&["a.md"]), None);
+        assert_eq!(scan(&["a.md", "--color"]), None);
+        assert_eq!(scan(&["a.md", "--color", "beige"]), None);
+        assert_eq!(scan(&["--colorless", "a.md"]), None);
     }
 }
