@@ -82,20 +82,19 @@ fn write_pdf(
     output_path: &Path,
     theme: &Theme,
 ) -> Result<Outcome> {
-    let typeset = convert::prepare(source_path, theme)?.typeset()?;
-    let pdf = document::compile::to_pdf(&typeset.document)?;
-    let bytes = pdf.len();
+    let rendered = convert::prepare(source_path, theme)?.render()?;
+    let bytes = rendered.pdf.len();
 
     if let Some(parent) = output_path.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("could not create {}", parent.display()))?;
     }
 
-    std::fs::write(output_path, pdf)
+    std::fs::write(output_path, rendered.pdf)
         .with_context(|| format!("could not write {}", output_path.display()))?;
 
     Ok(Outcome {
-        warnings: typeset.warnings,
+        warnings: rendered.warnings,
         bytes,
     })
 }

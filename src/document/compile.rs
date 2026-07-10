@@ -1,9 +1,7 @@
-//! Compiles the generated Typst source, then exports it as a PDF or as pixels.
+//! Compiles the generated Typst source into a PDF.
 
-use anyhow::{Context, Result, anyhow};
-use image::{Rgba, RgbaImage};
+use anyhow::{Result, anyhow};
 use typst_as_lib::{TypstAsLibError, TypstEngine};
-use typst_layout::PagedDocument;
 
 /// Enough of a typesetting failure to diagnose it, without a wall of text.
 const MAX_DIAGNOSTICS: usize = 5;
@@ -25,18 +23,18 @@ static FONTS: [&[u8]; 11] = [
     include_bytes!("../../assets/fonts/NewCMMath-Book.otf"),
 ];
 
-/// A laid out document, alongside anything Typst had to say while laying it out.
-pub struct Typeset {
-    pub document: PagedDocument,
+/// A finished PDF, alongside anything Typst had to say while typesetting it.
+pub struct Compiled {
+    pub pdf: Vec<u8>,
     pub warnings: Vec<String>,
 }
 
-/// Lays out Typst source. `files` are read by virtual path from within the
-/// source: the syntax theme, the icons and any embedded images.
-pub fn typeset(
+/// Renders Typst source to PDF bytes. `files` are read by virtual path from
+/// within the source: the syntax theme, the icons and any embedded images.
+pub fn to_pdf(
     source: &str,
     files: &[(String, Vec<u8>)],
-) -> Result<Typeset> {
+) -> Result<Compiled> {
     let resolved: Vec<(&str, Vec<u8>)> = files
         .iter()
         .map(|(path, bytes)| (path.as_str(), bytes.clone()))
@@ -62,50 +60,18 @@ pub fn typeset(
         .output
         .map_err(|error| anyhow!("the document could not be typeset\n{}", describe(&error)))?;
 
-    Ok(Typeset { document, warnings })
-}
-
-/// Exports the document as PDF bytes.
-pub fn to_pdf(document: &PagedDocument) -> Result<Vec<u8>> {
     let options = typst_pdf::PdfOptions::default();
 
-    typst_pdf::pdf(document, &options).map_err(|diagnostics| {
+    let pdf = typst_pdf::pdf(&document, &options).map_err(|diagnostics| {
         let messages: Vec<String> = diagnostics
             .iter()
             .map(|entry| entry.message.to_string())
             .collect();
 
         anyhow!("the PDF could not be written\n{}", messages.join("\n"))
-    })
-}
+    })?;
 
-/// Draws the document at `pixels_per_point`. There is only ever one page, and
-/// it is as tall as the note is long, so the caller gets one very tall image.
-pub fn to_image(
-    document: &PagedDocument,
-    pixels_per_point: f64,
-) -> Result<RgbaImage> {
-    let page = document
-        .pages()
-        .first()
-        .context("the document came out empty")?;
-
-    let options = typst_render::RenderOptions {
-        pixel_per_pt: pixels_per_point.into(),
-        render_bleed: false,
-    };
-
-    let pixmap = typst_render::render(page, &options);
-    let mut image = RgbaImage::new(pixmap.width(), pixmap.height());
-
-    // tiny-skia holds each channel premultiplied by its alpha. `image` does not.
-    for (target, source) in image.pixels_mut().zip(pixmap.pixels()) {
-        let color = source.demultiply();
-
-        *target = Rgba([color.red(), color.green(), color.blue(), color.alpha()]);
-    }
-
-    Ok(image)
+    Ok(Compiled { pdf, warnings })
 }
 
 /// `TypstAsLibError` renders its diagnostics with `{:?}`, which puts the whole
@@ -148,9 +114,7 @@ mod tests {
     /// Every test here asks the same question, which is whether the source
     /// reaches a PDF at all.
     fn exports(source: &str) -> bool {
-        typeset(source, &[])
-            .and_then(|typeset| to_pdf(&typeset.document))
-            .is_ok()
+        to_pdf(source, &[]).is_ok()
     }
 
     #[test]
@@ -183,28 +147,5 @@ mod tests {
         let source = page("#set text(font: \"Montserrat\")\n*Bold* _Italic_ *_Both_*");
 
         assert!(exports(&source));
-    }
-
-    /// The preview scales the page by asking for pixels per point, so a page
-    /// 200pt wide at two of them is 400 pixels across.
-    #[test]
-    fn a_page_is_drawn_at_the_scale_it_is_asked_for() {
-        let typeset = typeset(&page("Hi"), &[]).unwrap();
-
-        let image = to_image(&typeset.document, 2.0).unwrap();
-
-        assert_eq!(image.width(), 400);
-        assert!(image.height() > 0);
-    }
-
-    /// The page is opaque, and a preview drawn over a terminal cell has to be,
-    /// because neither halfblocks nor sixels carry an alpha channel.
-    #[test]
-    fn a_drawn_page_is_opaque() {
-        let typeset = typeset(&page("#set page(fill: white)\nHi"), &[]).unwrap();
-
-        let image = to_image(&typeset.document, 1.0).unwrap();
-
-        assert!(image.pixels().all(|pixel| pixel.0[3] == 0xff));
     }
 }

@@ -44,27 +44,11 @@ A missing image, a video, a note transclusion. The converter used to skip these 
 
 The command reports itself on every run, naming the theme, the source, the output and anything it skipped. `--quiet` turns that off. It hides nothing, because every skipped embed is marked in the PDF as well.
 
-## The preview is the page, not a picture of the page
+## The interface shows no live render
 
-The obvious way to show a note in the terminal is to render some approximation of it, in text. The interesting way turned out to be cheaper. Typst already lays the document out, and `typst-render` turns a laid out page into pixels using the same crate version that `typst-pdf` exports from. So the preview is the document, drawn at whatever resolution the pane happens to be.
+An earlier interface drew the real page beside the note list, rendered by Typst to pixels and painted through a terminal graphics protocol. It looked good and it was not worth it. A live render meant re-rendering a tall image on every keystroke that changed it, encoding a slice of it for the terminal on every scroll, and a supersample pass to keep the small text from going soft. All of it had to be kept off the main thread with its own workers and generation counters so that a slow terminal did not stutter the keyboard. That is a lot of moving parts, and a heap of image and rendering crates, to preview a file you are about to open anyway.
 
-That has a consequence worth stating. The interactive front end keeps the laid out document that its preview was drawn from, and exports that when the reader presses enter. The file on disk is the pages they were looking at, rather than a fresh compile that might disagree with them.
-
-Two things follow from a page that is one image thousands of pixels tall. It is rendered once per note, per theme and per pane width, because those are the three things that change its size. Scrolling only cuts a different slice out of it, which costs nothing but the encoding.
-
-The page is rendered at twice the pane resolution and then shrunk to fit, rather than straight at the resolution of the terminal. A terminal cell is a coarse thing to draw small body text into, and rendering straight at that size comes out soft. Downsampling a larger render is what gives the text a clean edge. A ceiling on the rendered height keeps a long note from asking for an image too tall to hold, at the cost of some sharpness once a note is very long.
-
-The interface takes its own colours from the document palette. Toggling the theme retints the borders, the labels and the background along with the page, so the choice shows what it does instead of naming it.
-
-## Nothing slow runs on the main thread
-
-The first cut of the interface did two slow things where the keyboard could feel them. It encoded the visible slice of the page inside the draw, and it wrote the PDF inside the keypress that asked for it. Both froze the interface, the first on every scroll and the second every time a file was saved. The spinner, being on the same thread, froze with them.
-
-So the three slow things each moved onto a thread. Typesetting and rendering a note, encoding a slice of it for the terminal, and writing a PDF. The loop hands work out and draws whatever has come back, and it takes a whole burst of held-key events before it draws, so a long scroll cannot fall a frame behind the keyboard.
-
-The encoder is the interesting one, because scrolling asks it for a new slice faster than a terminal can be painted. It keeps only the latest request and drops the rest, and every drawing carries the number of the view it belongs to, so one for a scroll position already left behind is thrown away rather than shown. The reader sees the page catch up to where they scrolled, never a queue of stale frames draining out.
-
-A theme is switched the same careful way. The chrome retints at once, because that is free, but the page it was showing is now the wrong colour, so the interface shows it loading until the newly rendered page arrives. The chrome and the page never disagree on screen.
+So the render is gone, and with it `typst-render`, `ratatui-image` and `image`. The interface is now a file picker and a save location. You pick a note, choose the folder, and write it. The one slow thing left, writing the PDF, runs on a worker so the keyboard stays live, and the interface takes its colours from the document palette so a theme still shows what it does rather than naming it.
 
 ## The terminal is a library's problem
 

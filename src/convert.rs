@@ -1,15 +1,15 @@
-//! Reading a note and turning it into a document, once for the file on disk
-//! and once for the preview beside it.
+//! Reading a note and turning it into a PDF. Both the command and the
+//! interface come through here, so a file is never built two different ways.
 
 use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use crate::document::{self, compile::Typeset};
+use crate::document;
 use crate::markdown::{self, frontmatter};
 use crate::theme::Theme;
 
-/// A note, parsed and dressed in a theme, waiting to be laid out.
+/// A note, parsed and dressed in a theme, ready to be typeset.
 pub(crate) struct Prepared {
     source: String,
     files: Vec<(String, Vec<u8>)>,
@@ -41,17 +41,24 @@ pub(crate) fn prepare(
     })
 }
 
+/// The PDF, and everything that had to be skipped to make it. What the
+/// converter skipped and what Typst warned about are one list to a reader,
+/// so they arrive as one.
+pub(crate) struct Rendered {
+    pub(crate) pdf: Vec<u8>,
+    pub(crate) warnings: Vec<String>,
+}
+
 impl Prepared {
-    /// Lays the note out. Whatever the converter had to skip is carried through
-    /// alongside whatever Typst had to say, because to a reader they are one
-    /// list of things that did not go to plan.
-    pub(crate) fn typeset(self) -> Result<Typeset> {
-        let mut typeset = document::compile::typeset(&self.source, &self.files)?;
+    pub(crate) fn render(self) -> Result<Rendered> {
+        let compiled = document::compile::to_pdf(&self.source, &self.files)?;
 
         let mut warnings = self.warnings;
-        warnings.extend(typeset.warnings);
-        typeset.warnings = warnings;
+        warnings.extend(compiled.warnings);
 
-        Ok(typeset)
+        Ok(Rendered {
+            pdf: compiled.pdf,
+            warnings,
+        })
     }
 }

@@ -33,7 +33,7 @@ It is one binary with the fonts already inside it. Nothing to install alongside 
 * **Math:** LaTeX, both inline and as its own centred block.
 * **Everything else:** image embeds, `==highlights==`, `%%comments%%`, `#tags`, task lists, tables, nested lists, strikethrough, and quotes.
 * **Two themes:** light and dark.
-* **An interactive mode:** browse your notes and watch the real page render beside them, before you commit to a file.
+* **An interactive mode:** pick a note, choose a folder, and export, without leaving the terminal.
 
 ## Install
 
@@ -52,11 +52,11 @@ md2pdf note.md                       # writes PDF/note.pdf
 md2pdf note.md -t dark               # dark theme
 md2pdf notes/post.md -o ~/post.pdf   # choose where it lands
 md2pdf note -q                       # add the .md, and say nothing
-md2pdf -i                            # browse, preview, then export
+md2pdf -i                            # pick a note and a folder, then export
 ```
 
 ```
-  -i, --interactive              browse and preview, then export
+  -i, --interactive              pick a note and a folder, then export
   -t, --theme <light|dark>       colour theme, light by default
   -o, --output <PATH>            write the PDF here
   -q, --quiet                    report nothing but errors
@@ -77,23 +77,21 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 
 ## Interactive mode
 
-`md2pdf -i` opens a browser for your notes with the page rendered next to them. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way. It is the real page, drawn by the same typesetter that writes the PDF, so what you scroll through is what you get. Press enter and it writes exactly those pages to disk.
+`md2pdf -i` opens a picker for your notes, a theme, and a folder to save into. Choose a note, press enter, and it writes the PDF. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way.
 
 ```
-╭ notes ───────────────────────╮╭ preview ─────────────────────────────╮
-│  README.md                   ││                                      │
-│› tests/test.md               ││          ╔══ H1 Heading ══╗          │
-│  docs/architecture.md        ││          ║   properties   ║          │
-╰ / to search ─────────────────╯╰────────────────────────────── top ───╯
-╭ skipped ─────────────────────────────────────────────────────────────╮
-│ ! video embeds are not supported: 2026-03-26 11-50-04.mp4            │
-╰──────────────────────────────────────────────────────────────────────╯
- ↑↓ note   t theme   ⏎ export   pgup/pgdn scroll   / search   q quit
+╭ notes ─────────────────────────────╮╭ export ──────────────────────╮
+│  README.md                         ││                              │
+│› tests/test.md                     ││  source  tests/test.md       │
+│  docs/architecture.md              ││  theme   dark                │
+│                                    ││  save to PDF/test.pdf        │
+╰ / to search ───────────────────────╯│                              │
+                                       │  ⏎ to export                 │
+                                       ╰──────────────────────────────╯
+ ↑↓ note   t theme   e save to   ⏎ export   / search   q quit
 ```
 
-Switching the theme retints the interface along with the page, so you can see the choice rather than read it. Type `/` to filter the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`.
-
-If your terminal speaks sixel, kitty graphics or iTerm2 graphics, the page is drawn in full colour at whatever resolution the pane gives it. Anything else falls back to unicode half blocks, which works everywhere.
+Type `/` to filter the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. Switching the theme retints the interface, so you see the choice rather than read it, and it is the theme the PDF is written in.
 
 ## What it will not do
 

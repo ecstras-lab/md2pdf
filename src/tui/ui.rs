@@ -1,25 +1,24 @@
 //! Drawing the interface.
 
+use std::path::Path;
+
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Margin, Rect, Size};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{
-    Block, BorderType, List, ListItem, Padding, Paragraph, Scrollbar, ScrollbarOrientation,
-    ScrollbarState, Wrap,
-};
-use ratatui_image::Image;
+use ratatui::widgets::{Block, BorderType, List, ListItem, Padding, Paragraph};
 
+use crate::cli::ThemeName;
 use crate::theme::{self, Theme};
 use crate::tui::app::{App, SPINNER};
 use crate::tui::notes;
 
-/// Wide enough for a note two folders deep, narrow enough to leave the page
-/// most of the terminal.
-const LIST_WIDTH: u16 = 32;
-
 /// The skipped panel grows with what it has to say, up to this.
 const SKIPPED_HEIGHT: u16 = 6;
+
+/// How wide the labels in the export panel are, so their values line up. One
+/// past the longest label, `save to`, so every value keeps a gap.
+const LABEL_WIDTH: usize = 8;
 
 /// The interface wears the colours of the document, so that choosing a theme
 /// shows what the theme looks like instead of naming it.
@@ -75,13 +74,7 @@ pub(super) fn draw(
 
     frame.render_widget(Block::new().style(background), frame.area());
 
-    let skipped = app
-        .page
-        .as_ref()
-        .map(|page| page.warnings.len())
-        .unwrap_or_default();
-
-    let panel = match skipped {
+    let panel = match app.skipped.len() {
         0 => 0,
         count => u16::try_from(count)
             .unwrap_or(u16::MAX)
@@ -89,7 +82,7 @@ pub(super) fn draw(
             .min(SKIPPED_HEIGHT),
     };
 
-    let [header, body, warnings, footer] = Layout::vertical([
+    let [header, body, skipped, footer] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(6),
         Constraint::Length(panel),
@@ -97,13 +90,13 @@ pub(super) fn draw(
     ])
     .areas(frame.area());
 
-    let [list, page] =
-        Layout::horizontal([Constraint::Length(LIST_WIDTH), Constraint::Min(24)]).areas(body);
+    let [notes, export] =
+        Layout::horizontal([Constraint::Percentage(58), Constraint::Percentage(42)]).areas(body);
 
     draw_header(frame, header, app, &palette);
-    draw_notes(frame, list, app, &palette);
-    draw_page(frame, page, app, &palette);
-    draw_skipped(frame, warnings, app, &palette);
+    draw_notes(frame, notes, app, &palette);
+    draw_export(frame, export, app, &palette);
+    draw_skipped(frame, skipped, app, &palette);
     draw_footer(frame, footer, app, &palette);
 }
 
@@ -139,7 +132,7 @@ fn draw_header(
         Span::styled(format!(" {label} "), style)
     };
 
-    let light = app.theme == crate::cli::ThemeName::Light;
+    let light = app.theme == ThemeName::Light;
 
     frame.render_widget(
         Line::from(vec![swatch("light", light), swatch("dark", !light)]).right_aligned(),
@@ -204,125 +197,123 @@ fn search_line(
     ])
 }
 
-fn draw_page(
+/// What will be written, and where. The one panel that used to hold the render.
+fn draw_export(
     frame: &mut Frame,
     area: Rect,
-    app: &mut App,
+    app: &App,
     palette: &Palette,
 ) {
-    let block = palette
-        .panel("preview")
-        .title_bottom(scroll_line(app, palette));
-
+    let block = palette.panel("export").padding(Padding::horizontal(2));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // The pane is only known once it has been drawn into, and the page is scaled
-    // to it, so the pane is measured here rather than before the draw.
-    app.resize(Size::new(inner.width, inner.height));
+    let source = app
+        .selected()
+        .map(notes::label)
+        .unwrap_or_else(|| "no note selected".to_owned());
 
-    if app.page_ready() {
-        let protocol = app.protocol.as_ref().expect("a ready page has a drawing");
-        frame.render_widget(Image::new(protocol), inner);
-    } else if let Some(failure) = &app.failure {
-        let message = Paragraph::new(failure.as_str())
-            .style(Style::new().fg(palette.danger))
-            .wrap(Wrap { trim: true });
+    let lines = vec![
+        Line::default(),
+        row(
+            "source",
+            Span::styled(source, Style::new().fg(palette.foreground)),
+            palette,
+        ),
+        row(
+            "theme",
+            Span::styled(app.theme.label(), Style::new().fg(palette.foreground)),
+            palette,
+        ),
+        save_row(app, palette),
+        Line::default(),
+        action_line(app, palette),
+    ];
 
-        frame.render_widget(message, inner.inner(Margin::new(2, 1)));
-    } else if app.matches.is_empty() {
-        draw_middle(
-            frame,
-            inner,
-            "no notes here",
-            Style::new().fg(palette.muted),
-        );
-    } else {
-        let spinner = Span::styled(SPINNER[app.spinner], Style::new().fg(palette.primary));
-        let label = Span::styled(" typesetting", Style::new().fg(palette.muted));
-
-        draw_middle(frame, inner, Line::from(vec![spinner, label]), Style::new());
-    }
-
-    draw_scrollbar(frame, area, app, palette);
+    frame.render_widget(Paragraph::new(lines), inner);
 }
 
-/// Centres one line in an area, for the states that have nothing but a word to
-/// show, the loader among them.
-fn draw_middle<'a>(
-    frame: &mut Frame,
-    area: Rect,
-    content: impl Into<Line<'a>>,
-    style: Style,
-) {
-    if area.height == 0 {
-        return;
-    }
-
-    let middle = Rect {
-        y: area.y + area.height / 2,
-        height: 1,
-        ..area
-    };
-
-    frame.render_widget(
-        Paragraph::new(content.into()).style(style).centered(),
-        middle,
-    );
-}
-
-fn draw_scrollbar(
-    frame: &mut Frame,
-    area: Rect,
-    app: &App,
+/// One `label  value` line of the export panel.
+fn row<'a>(
+    label: &'static str,
+    value: Span<'a>,
     palette: &Palette,
-) {
-    let furthest = app.furthest_scroll();
-
-    if furthest == 0 {
-        return;
-    }
-
-    let mut state = ScrollbarState::new(furthest as usize).position(app.scroll as usize);
-
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-        .begin_symbol(None)
-        .end_symbol(None)
-        .track_symbol(Some("│"))
-        .thumb_symbol("┃")
-        .track_style(Style::new().fg(palette.border))
-        .thumb_style(Style::new().fg(palette.primary));
-
-    frame.render_stateful_widget(scrollbar, area.inner(Margin::new(0, 1)), &mut state);
+) -> Line<'a> {
+    Line::from(vec![
+        Span::styled(
+            format!("{label:LABEL_WIDTH$}"),
+            Style::new().fg(palette.muted),
+        ),
+        value,
+    ])
 }
 
-/// How far down the page the reader is, on the bottom edge of the pane.
-fn scroll_line(
+/// The save line, editable in place. While it is being typed the folder carries
+/// a cursor, and the file name the note lends it trails behind in muted text so
+/// it is plain that only the folder is being changed.
+fn save_row(
     app: &App,
     palette: &Palette,
 ) -> Line<'static> {
-    let furthest = app.furthest_scroll();
+    let filename = app
+        .selected()
+        .and_then(Path::file_stem)
+        .map(|stem| format!("/{}.pdf", stem.to_string_lossy()))
+        .unwrap_or_default();
 
-    if furthest == 0 {
-        return Line::default();
+    if app.editing_save {
+        return Line::from(vec![
+            Span::styled(
+                format!("{:LABEL_WIDTH$}", "save to"),
+                Style::new().fg(palette.muted),
+            ),
+            Span::styled(app.save_dir.clone(), Style::new().fg(palette.foreground)),
+            Span::styled("▏", Style::new().fg(palette.primary)),
+            Span::styled(filename, Style::new().fg(palette.muted)),
+        ]);
     }
 
-    let place = if app.scroll == 0 {
-        "top".to_owned()
-    } else if app.scroll >= furthest {
-        "end".to_owned()
-    } else {
-        format!("{}%", app.scroll * 100 / furthest)
-    };
+    let shown = app
+        .output_display()
+        .unwrap_or_else(|| format!("{}{filename}", app.save_dir));
 
-    Line::from(Span::styled(
-        format!(" {place} "),
-        Style::new().fg(palette.muted),
-    ))
-    .right_aligned()
+    row(
+        "save to",
+        Span::styled(shown, Style::new().fg(palette.foreground)),
+        palette,
+    )
 }
 
-/// Everything the converter could not draw. Each of these also leaves a marked
+/// The line under the fields, which says what pressing enter will do, or that a
+/// write is under way.
+fn action_line(
+    app: &App,
+    palette: &Palette,
+) -> Line<'static> {
+    if app.writing {
+        return Line::from(vec![
+            Span::styled(
+                format!("{} ", SPINNER[app.spinner]),
+                Style::new().fg(palette.primary).bold(),
+            ),
+            Span::styled("writing the PDF", Style::new().fg(palette.foreground)),
+        ]);
+    }
+
+    if app.editing_save {
+        return Line::from(Span::styled(
+            "⏎ set folder    esc cancel",
+            Style::new().fg(palette.muted),
+        ));
+    }
+
+    Line::from(vec![
+        Span::styled("⏎", Style::new().fg(palette.primary).bold()),
+        Span::styled(" to export", Style::new().fg(palette.muted)),
+    ])
+}
+
+/// Everything the last write could not draw. Each of these also left a marked
 /// box on the page beside it.
 fn draw_skipped(
     frame: &mut Frame,
@@ -334,12 +325,8 @@ fn draw_skipped(
         return;
     }
 
-    let Some(page) = &app.page else {
-        return;
-    };
-
-    let lines: Vec<Line> = page
-        .warnings
+    let lines: Vec<Line> = app
+        .skipped
         .iter()
         .map(|warning| {
             Line::from(vec![
@@ -349,10 +336,7 @@ fn draw_skipped(
         })
         .collect();
 
-    let block = palette
-        .panel("skipped")
-        .border_style(Style::new().fg(palette.border))
-        .padding(Padding::horizontal(1));
+    let block = palette.panel("skipped").padding(Padding::horizontal(1));
 
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -385,29 +369,16 @@ fn draw_footer(
         return;
     }
 
-    if app.writing {
-        frame.render_widget(
-            Line::from(vec![
-                Span::styled(
-                    format!(" {} ", SPINNER[app.spinner]),
-                    Style::new().fg(palette.primary).bold(),
-                ),
-                Span::styled("writing the PDF", Style::new().fg(palette.foreground)),
-            ]),
-            area,
-        );
-
-        return;
-    }
-
     let keys: &[(&str, &str)] = if app.searching {
         &[("type", "filter"), ("⏎", "accept"), ("esc", "clear")]
+    } else if app.editing_save {
+        &[("type", "folder"), ("⏎", "set"), ("esc", "cancel")]
     } else {
         &[
             ("↑↓", "note"),
             ("t", "theme"),
+            ("e", "save to"),
             ("⏎", "export"),
-            ("pgup/pgdn", "scroll"),
             ("/", "search"),
             ("q", "quit"),
         ]
