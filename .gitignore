@@ -1,2 +1,10 @@
+# Build output
 /target
-Cargo.lock
+
+# Where the converter writes by default
+/PDF
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+*.swp

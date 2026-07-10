@@ -2,5 +2,19 @@
 name = "md2pdf"
 version = "0.1.0"
 edition = "2024"
+authors = ["ecstra <themythbustertmb@gmail.com>"]
 
 [dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+pulldown-cmark = "0.13.4"
+regex = "1.11"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+tex2typst-rs = "0.4.1"
+# Same syntax set and regex backend Typst itself uses, so a language tag that
+# resolves here is guaranteed to highlight in the compiled document.
+two-face = { version = "0.4", default-features = false, features = ["syntect-fancy"] }
+typst-as-lib = "0.16.0"
+typst-pdf = "0.15.0"
+urlencoding = "2.1"
