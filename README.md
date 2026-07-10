@@ -79,22 +79,13 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 
 `md2pdf -i` opens a picker for your notes, a theme, and a folder to save into. Choose a note, press enter, and it writes the PDF. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way.
 
-```
- █▙ ▟█▐▛▀▙▝▀▀▙▐▛▀▙▐▛▀▙▐▛▀▀
- █▝█▘█▐▌ █▗▛▀▘▐▛▀▘▐▌ █▐▛▀                             light  dark
- ▀   ▀▝▀▀▘▝▀▀▀▝▘  ▝▀▀▘▝▘
-╭ notes ─────────────────────────────╮╭ export ──────────────────╮
-│  README.md                         ││                          │
-│  todo.md                           ││   note                   │
-│  docs/architecture.md              ││   tests/test.md          │
-│  docs/decisions.md                 ││   ↓                      │
-│  tests/Another Note.md             ││   save to                │
-│› tests/test.md                     ││   PDF/test.pdf           │
-│                                    ││                          │
-│                                    ││          ⏎  export       │
-╰ / to search ───────────────────────╯╰──────────────────────────╯
- ↑↓ note   t theme   e save to   ⏎ export   / search   q quit
-```
+<p align="center">
+  <br>
+  <img
+    alt="One note, rendered in the light theme and the dark theme"
+    src="media/tui.png" />
+  <br><br>
+</p>
 
 The notes are on the left, the PDF they become on the right. Type `/` to search the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. The selected note, the live theme, and the export button carry the document's own accent, so switching the theme retints the interface, and it is the theme the PDF is written in. Anything a note could not draw is listed below once it is written.
 
