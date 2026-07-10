@@ -80,18 +80,20 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 `md2pdf -i` opens a picker for your notes, a theme, and a folder to save into. Choose a note, press enter, and it writes the PDF. It opens in the dark theme, since a terminal usually is, and `-t light` starts it the other way.
 
 ```
-╭ notes ─────────────────────────────╮╭ export ──────────────────────╮
-│  README.md                         ││                              │
-│› tests/test.md                     ││  source  tests/test.md       │
-│  docs/architecture.md              ││  theme   dark                │
-│                                    ││  save to PDF/test.pdf        │
-╰ / to search ───────────────────────╯│                              │
-                                       │  ⏎ to export                 │
-                                       ╰──────────────────────────────╯
- ↑↓ note   t theme   e save to   ⏎ export   / search   q quit
+ md2pdf                                          light  dark
+──────────────────────────────────────────────────────────────
+ N O T E S   6              │   E X P O R T
+                            │
+   README.md                │   tests/test.md
+ ▌ tests/test.md            │   ↓
+   docs/architecture.md     │   PDF/test.pdf
+                            │
+ / filter                   │     export  ⏎
+──────────────────────────────────────────────────────────────
+ ↑↓ move   t theme   e folder   ⏎ export   / filter   q quit
 ```
 
-Type `/` to filter the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. Switching the theme retints the interface, so you see the choice rather than read it, and it is the theme the PDF is written in.
+The notes are on the left, the PDF they become on the right. Type `/` to filter the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. The selected note, the live theme, and the export button carry the document's own accent, so switching the theme retints the interface, and it is the theme the PDF is written in. Anything a note could not draw is listed under the flow once it is written.
 
 ## What it will not do
 
