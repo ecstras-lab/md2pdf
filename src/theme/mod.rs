@@ -65,7 +65,7 @@ impl Theme {
         Self {
             background: Color::hex(0xffffff),
             foreground: Color::hex(0x404040),
-            heading: Color::hex(0x111111),
+            heading: Color::hex(0x0f0f0f),
             heading_h3: Color::hex(0x222222),
             heading_h4: Color::hex(0x333333),
             heading_h5: Color::hex(0x444444),
@@ -98,13 +98,13 @@ impl Theme {
 
     pub fn dark() -> Self {
         Self {
-            background: Color::hex(0x09090b),
+            background: Color::hex(0x0f0f0f),
             foreground: Color::hex(0xb4b4b4),
             heading: Color::hex(0xffffff),
             heading_h3: Color::hex(0xf0f0f0),
             heading_h4: Color::hex(0xe6e6e6),
             heading_h5: Color::hex(0xd9d9d9),
-            card: Color::hex(0x09090b),
+            card: Color::hex(0x0f0f0f),
             card_foreground: Color::hex(0xe0e0e0),
             secondary: Color::hex(0x1e1e20),
             muted: Color::hex(0x2a2a2d),
