@@ -82,7 +82,7 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 ```
  md2pdf                                          light  dark
 ──────────────────────────────────────────────────────────────
- N O T E S   6              │   E X P O R T
+ M A R K D O W N   6        │   E X P O R T
                             │
    README.md                │   tests/test.md
  ▌ tests/test.md            │   ↓
