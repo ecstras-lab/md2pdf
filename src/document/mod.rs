@@ -1,11 +1,11 @@
 //! Assembles the Typst source and the in-memory files it reads.
 
-use crate::icons;
-use crate::theme::{self, Theme};
-use crate::tmtheme;
+pub mod compile;
+
+use crate::theme::{self, Theme, icons, tmtheme};
 
 /// The style rules, written in Typst against the bindings [`preamble`] emits.
-const STYLESHEET: &str = include_str!("../assets/theme.typ");
+const STYLESHEET: &str = include_str!("../../assets/theme.typ");
 
 pub const SYNTAX_THEME_PATH: &str = "/syntax.tmTheme";
 
@@ -132,7 +132,98 @@ pub fn assets(theme: &Theme) -> Vec<(String, Vec<u8>)> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
+
+    /// Exercises every helper `assets/theme.typ` defines. A Typst syntax
+    /// error or a renamed binding fails here rather than at the user's shell.
+    const EVERY_ELEMENT: &str = r#"---
+title: Fixture
+tags:
+  - one
+  - two
+created: 2024-04-05T15:30:00
+home: https://example.com
+flag: true
+blank:
+---
+
+# Title
+
+## Second
+
+### Third
+#### Fourth
+##### Fifth
+###### Sixth
+
+Plain text with *emph*, **strong**, ~~struck~~, ==highlight==, %%comment%%,
+a #tag/nested, `inline code`, a [link](https://example.com) and a footnote[^a].
+
+- bullet
+  - nested
+    - deeper
+      - deepest
+
+1. first
+   1. inner
+      1. innermost
+
+- [ ] open
+- [x] done
+
+> plain quote
+
+> [!warning] Careful
+> body text
+
+> [!quote] Title only
+
+```python
+def greet():
+    print("hi")
+```
+
+```
+no language
+```
+
+| A | B |
+| - | :-: |
+| 1 | 2 |
+
+---
+
+Inline $E = mc^2$ and a block:
+
+$$
+\int_0^1 x^2 dx
+$$
+
+[^a]: the note
+"#;
+
+    #[test]
+    fn the_stylesheet_compiles_every_element_it_styles() {
+        let parsed = crate::markdown::frontmatter::split(EVERY_ELEMENT);
+        assert!(parsed.warnings.is_empty(), "{:?}", parsed.warnings);
+
+        let rendered = crate::markdown::render(&parsed.body, Path::new("."), &parsed.properties);
+
+        assert!(rendered.warnings.is_empty(), "{:?}", rendered.warnings);
+
+        for theme in [Theme::light(), Theme::dark()] {
+            let mut files = assets(&theme);
+            files.extend(rendered.files.clone());
+
+            let source = source(&theme, &rendered.body);
+
+            let pdf = compile::to_pdf(&source, &files);
+
+            assert!(pdf.is_ok(), "{:?}", pdf.err());
+        }
+    }
 
     #[test]
     fn every_callout_alias_points_at_an_emitted_icon() {

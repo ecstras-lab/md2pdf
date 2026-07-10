@@ -8,3 +8,6 @@
 .DS_Store
 Thumbs.db
 *.swp
+
+# The binary
+md2pdf.*

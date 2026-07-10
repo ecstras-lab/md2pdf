@@ -7,20 +7,20 @@ use typst_as_lib::{TypstAsLibError, TypstEngine};
 const MAX_DIAGNOSTICS: usize = 5;
 
 static FONTS: [&[u8]; 11] = [
-    include_bytes!("../assets/fonts/Montserrat-Regular.ttf"),
-    include_bytes!("../assets/fonts/Montserrat-Italic.ttf"),
-    include_bytes!("../assets/fonts/Montserrat-Medium.ttf"),
-    include_bytes!("../assets/fonts/Montserrat-SemiBold.ttf"),
-    include_bytes!("../assets/fonts/Montserrat-Bold.ttf"),
-    include_bytes!("../assets/fonts/Montserrat-BoldItalic.ttf"),
-    include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf"),
-    include_bytes!("../assets/fonts/JetBrainsMono-Bold.ttf"),
-    include_bytes!("../assets/fonts/JetBrainsMono-Italic.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-Regular.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-Italic.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-Medium.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-SemiBold.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-Bold.ttf"),
+    include_bytes!("../../assets/fonts/Montserrat-BoldItalic.ttf"),
+    include_bytes!("../../assets/fonts/JetBrainsMono-Regular.ttf"),
+    include_bytes!("../../assets/fonts/JetBrainsMono-Bold.ttf"),
+    include_bytes!("../../assets/fonts/JetBrainsMono-Italic.ttf"),
     // Backs Montserrat for the ornaments and list markers it does not carry.
-    include_bytes!("../assets/fonts/DejaVuSans.ttf"),
+    include_bytes!("../../assets/fonts/DejaVuSans.ttf"),
     // Typst lays equations out from a font's OpenType MATH table, which none
     // of the text faces above carry.
-    include_bytes!("../assets/fonts/NewCMMath-Book.otf"),
+    include_bytes!("../../assets/fonts/NewCMMath-Book.otf"),
 ];
 
 /// Renders Typst source to PDF bytes. `files` are read by virtual path from

@@ -22,14 +22,14 @@ Nothing is printed unless something needs saying. An embed the converter cannot 
 
 Each stage lives in one module and hands a value to the next.
 
-1. `frontmatter.rs` splits the YAML block off the top of the note. Every value is sorted into one of the five shapes that the properties table knows how to draw, namely tags, link, date, boolean and text. A block that will not parse is still stripped, so its keys never leak into the document.
-2. `markdown.rs` rewrites Obsidian embeds, parses the rest with `pulldown-cmark`, and walks the event stream to emit Typst markup. It also collects the bytes of every local image it resolves.
-3. `document.rs` renders the `Theme` as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body. It also builds the two kinds of file that the Typst source reads by path, the syntax theme and the icons.
-4. `compile.rs` hands the whole source to Typst along with the embedded fonts and those in memory files, then exports the PDF.
+1. `markdown/frontmatter.rs` splits the YAML block off the top of the note. Every value is sorted into one of the five shapes that the properties table knows how to draw, namely tags, link, date, boolean and text. A block that will not parse is still stripped, so its keys never leak into the document.
+2. `markdown/` rewrites Obsidian embeds in `preprocess.rs`, parses the rest with `pulldown-cmark`, and walks the event stream in `renderer.rs` to emit Typst markup. `images.rs` collects the bytes of every local image it resolves.
+3. `document/mod.rs` renders the `Theme` as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body. It also builds the two kinds of file that the Typst source reads by path, the syntax theme and the icons.
+4. `document/compile.rs` hands the whole source to Typst along with the embedded fonts and those in memory files, then exports the PDF.
 
 ## Where the styling lives
 
-`assets/theme.typ` is the stylesheet, written in Typst rather than CSS. It reads four bindings that `document.rs` emits ahead of it.
+`assets/theme.typ` is the stylesheet, written in Typst rather than CSS. It reads four bindings that `document/mod.rs` emits ahead of it.
 
 - `palette`: every colour that differs between the light and dark themes.
 - `marker-colors`: the four accents that list markers cycle through by depth.
@@ -38,7 +38,7 @@ Each stage lives in one module and hands a value to the next.
 
 Lengths in the stylesheet are the original pixel values converted at 0.75pt per pixel, so one rem, which was 16px, is 12pt. Those values only line up because `line-box` makes a run of text occupy the same frame a CSS line box would. Change that helper and every margin in the file drifts. See `docs/decisions.md` for why.
 
-The body that `markdown.rs` emits never styles anything itself. It only calls the helpers the stylesheet defines, such as `callout`, `code-block`, `doc-table` and `properties-block`. That split is what keeps the theme in one readable file.
+The body that `markdown/renderer.rs` emits never styles anything itself. It only calls the helpers the stylesheet defines, such as `callout`, `code-block`, `doc-table` and `properties-block`. That split is what keeps the theme in one readable file.
 
 ## Text is never markup
 
@@ -59,7 +59,7 @@ Licences sit beside the font files. All four are freely redistributable.
 
 ## Syntax highlighting
 
-Typst highlights code with syntect, which wants a TextMate colour scheme rather than CSS classes. `tmtheme.rs` writes one from the theme's colours at run time, mapping each `hljs-*` class to the TextMate scope that the Sublime grammars actually emit. `markdown.rs` resolves a fence's language against the same syntax set Typst uses, so a tag that resolves is guaranteed to highlight.
+Typst highlights code with syntect, which wants a TextMate colour scheme rather than CSS classes. `theme/tmtheme.rs` writes one from the theme's colours at run time, mapping each `hljs-*` class to the TextMate scope that the Sublime grammars actually emit. `markdown/inline.rs` resolves a fence's language against the same syntax set Typst uses, so a tag that resolves is guaranteed to highlight.
 
 ## Testing
 
