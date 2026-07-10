@@ -1,8 +1,14 @@
-//! The wordmark, drawn in half blocks from the project's SVG logo.
+//! The wordmark, drawn in quadrant blocks from the project's SVG logo.
 //!
-//! Each row pairs the block glyphs with a colour mask of the same length. In
-//! the mask `2` marks the accent, which is the 2, `1` the heading colour that
-//! the letters take, and `0` a gap.
+//! The logo is a 50 by 5 pixel grid whose cells stand twice as tall as wide.
+//! A quadrant character carries a 2 by 2 block of those pixels, and since each
+//! quadrant of a terminal cell is itself about twice as tall as wide, the
+//! wordmark keeps the aspect ratio of the SVG at half the width half blocks
+//! would need.
+//!
+//! Each row pairs the glyphs with a colour mask of the same length. In the
+//! mask `2` marks the accent, which is the 2, `1` the heading colour that the
+//! letters take, and `0` a gap.
 
 use std::iter;
 
@@ -10,18 +16,9 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
 const ROWS: [(&str, &str); 3] = [
-    (
-        "███▄  ▄███ ██▀▀▀█▄ ▀▀▀▀▀█▄ ██▀▀▀█▄ ██▀▀▀█▄ ██▀▀▀▀▀",
-        "11110011110111111102222222011111110111111101111111",
-    ),
-    (
-        "██ ▀██▀ ██ ██   ██ ▄█▀▀▀▀  ██▀▀▀▀  ██   ██ ██▀▀▀",
-        "11011110110110001102222220011111100110001101111100",
-    ),
-    (
-        "▀▀      ▀▀ ▀▀▀▀▀▀  ▀▀▀▀▀▀▀ ▀▀      ▀▀▀▀▀▀  ▀▀",
-        "11000000110111111002222222011000000111111001100000",
-    ),
+    ("█▙ ▟█▐▛▀▙▝▀▀▙▐▛▀▙▐▛▀▙▐▛▀▀", "1101111112222111111111111"),
+    ("█▝█▘█▐▌ █▗▛▀▘▐▛▀▘▐▌ █▐▛▀ ", "1111111012222111111011110"),
+    ("▀   ▀▝▀▀▘▝▀▀▀▝▘  ▝▀▀▘▝▘  ", "1000111112222110011111100"),
 ];
 
 /// How many rows the logo stands.
