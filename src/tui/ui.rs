@@ -153,7 +153,7 @@ fn draw_notes(
     palette: &Palette,
 ) {
     let block = palette
-        .panel("notes")
+        .panel("files")
         .title_bottom(search_line(app, palette));
 
     let items: Vec<ListItem> = app
@@ -237,14 +237,14 @@ fn draw_export(
     .areas(inner);
 
     frame.render_widget(
-        Line::from(Span::styled("note", Style::new().fg(palette.flow))),
+        Line::from(Span::styled("file", Style::new().fg(palette.flow))),
         note_label,
     );
 
     let name = app
         .selected()
         .map(notes::label)
-        .unwrap_or_else(|| "no note selected".to_owned());
+        .unwrap_or_else(|| "no file selected".to_owned());
 
     frame.render_widget(
         Line::from(Span::styled(
@@ -396,7 +396,7 @@ fn draw_footer(
         &[("type", "folder"), ("⏎", "set"), ("esc", "cancel")]
     } else {
         &[
-            ("↑↓", "note"),
+            ("↑↓", "file"),
             ("t", "theme"),
             ("e", "save to"),
             ("⏎", "export"),

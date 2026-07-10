@@ -312,7 +312,7 @@ impl App {
         }
 
         let (Some(source), Some(output_path)) = (self.selected(), self.output_path()) else {
-            self.say("there is no note to write", true);
+            self.say("there is no file to write", true);
             return;
         };
 
