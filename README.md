@@ -82,12 +82,12 @@ Colour turns itself on when a terminal is reading and off when anything else is.
 <p align="center">
   <br>
   <img
-    alt="One note, rendered in the light theme and the dark theme"
+    alt="TUI rendered in Dark Mode"
     src="media/tui.png" />
   <br><br>
 </p>
 
-The notes are on the left, the PDF they become on the right. Type `/` to search the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. The selected note, the live theme, and the export button carry the document's own accent, so switching the theme retints the interface, and it is the theme the PDF is written in. Anything a note could not draw is listed below once it is written.
+The files are on the left, the PDF they become on the right. Type `/` to search the list, and the letters need only appear in order, so `tsmd` finds `tests/test.md`. Press `e` to change the save folder, where the PDF takes its name from the note. The selected note, the live theme, and the export button carry the document's own accent, so switching the theme retints the interface, and it is the theme the PDF is written in. Anything a note could not draw is listed below once it is written.
 
 ## What it will not do
 
