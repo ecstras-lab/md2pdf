@@ -1,10 +1,11 @@
-//! The wordmark, drawn in sextant blocks from the project's SVG logo.
+//! The wordmark, drawn in quadrant blocks from the project's SVG logo.
 //!
-//! The logo is a 50 by 5 pixel grid whose cells stand twice as tall as wide.
-//! A sextant character carries a 2 by 3 block of those pixels, which is the
-//! densest packing a terminal offers, so the wordmark stands two rows tall.
-//! No character can hold more than two pixel columns, which makes 25 columns
-//! the floor for this artwork.
+//! The logo is a 50 by 5 pixel grid. Here it is squashed to four rows, which
+//! every letterform survives, so that quadrant characters carry it in exactly
+//! two terminal rows. Only quadrants are used, because they sit in the Block
+//! Elements range that every terminal font carries. The denser sextants would
+//! halve nothing further and rendered as empty boxes on fonts without
+//! Unicode's legacy computing symbols.
 //!
 //! Each row pairs the glyphs with a colour mask of the same length. In the
 //! mask `2` marks the accent, which is the 2, `1` the heading colour that the
@@ -16,8 +17,8 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
 const ROWS: [(&str, &str); 2] = [
-    ("█🬪🬭🬜█▐🬕🬂🬺🬁🬰🬰🬛▐🬴🬰🬛▐🬕🬂🬺▐🬴🬰🬂", "1111111112222111111111111"),
-    ("🬎 🬂 🬎🬉🬌🬋🬆🬉🬌🬋🬋🬉🬄  🬉🬌🬋🬆🬉🬄  ", "1010111112222110011111100"),
+    ("█▙ ▟█▐▛▀▙▝▀▀▙▐▛▀▙▐▛▀▙▐▛▀▀", "1101111112222111111111111"),
+    ("█▝▀▘█▐▙▄▛▐██▙▐▛▀▘▐▙▄▛▐▛▀ ", "1111111112222111111111110"),
 ];
 
 /// How many rows the logo stands.
