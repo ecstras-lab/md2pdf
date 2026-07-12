@@ -29,8 +29,9 @@ pub(super) struct Renderer<'a> {
     images: Images,
     warnings: Vec<String>,
     defined_footnotes: HashSet<String>,
+    /// Name to number, in first reference order. The section derives its
+    /// ordering from the numbers, so no second structure has to stay in step.
     footnote_numbers: HashMap<String, usize>,
-    footnote_order: Vec<String>,
     footnote_bodies: HashMap<String, String>,
     properties: String,
     properties_emitted: bool,
@@ -60,7 +61,6 @@ impl<'a> Renderer<'a> {
             warnings: Vec::new(),
             defined_footnotes,
             footnote_numbers: HashMap::new(),
-            footnote_order: Vec::new(),
             footnote_bodies: HashMap::new(),
             properties: render_properties(properties),
             properties_emitted: false,
@@ -513,19 +513,17 @@ impl<'a> Renderer<'a> {
 
         // Only the first reference anchors the label the backlink jumps to.
         let first = number == next;
-        if first {
-            self.footnote_order.push(name.to_owned());
-        }
 
         out.push_str(&format!("#fn-ref({number}, {first})"));
     }
 
     fn footnotes_section(&mut self) -> String {
-        let mut entries: Vec<String> = self
-            .footnote_order
-            .iter()
-            .filter_map(|name| {
-                let number = self.footnote_numbers.get(name)?;
+        let mut referenced: Vec<(&String, &usize)> = self.footnote_numbers.iter().collect();
+        referenced.sort_by_key(|(_, number)| **number);
+
+        let mut entries: Vec<String> = referenced
+            .into_iter()
+            .filter_map(|(name, number)| {
                 let body = self.footnote_bodies.get(name)?;
                 Some(format!(
                     "  (number: {number}, backref: true, body: [{body}]),\n"
