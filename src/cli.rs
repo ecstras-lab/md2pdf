@@ -285,8 +285,11 @@ mod tests {
     #[test]
     fn parent_components_cannot_escape_the_output_folder() {
         let working_dir = std::env::current_dir().unwrap();
+        let own_name = working_dir.file_name().unwrap();
 
-        let output = default_output_path(Path::new("../md2pdf/note.md")).unwrap();
+        let source = Path::new("..").join(own_name).join("note.md");
+        let output = default_output_path(&source).unwrap();
+
         assert_eq!(output, working_dir.join("PDF").join("note.pdf"));
     }
 
@@ -295,8 +298,10 @@ mod tests {
     #[test]
     fn outside_sources_keep_their_parent_folder_name() {
         let working_dir = std::env::current_dir().unwrap();
+        let outside = std::env::temp_dir().join("daily").join("note.md");
 
-        let output = default_output_path(Path::new("C:/vault/daily/note.md")).unwrap();
+        let output = default_output_path(&outside).unwrap();
+
         assert_eq!(
             output,
             working_dir.join("PDF").join("daily").join("note.pdf")

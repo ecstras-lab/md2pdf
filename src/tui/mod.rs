@@ -224,16 +224,22 @@ mod tests {
         assert_eq!(app.query, "");
     }
 
-    /// Ctrl and Alt chords are commands somewhere else, never text.
+    /// Ctrl and Alt chords are commands somewhere else, never text. Both
+    /// held together is AltGr, which is text on half the world's keyboards.
     #[test]
-    fn chorded_letters_do_not_reach_text_fields() {
+    fn chorded_letters_do_not_reach_text_fields_but_altgr_does() {
         let mut app = fixture();
 
         press(&mut app, KeyCode::Char('/'));
         app.on_key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::CONTROL));
         app.on_key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::ALT));
-
         assert_eq!(app.query, "");
+
+        app.on_key(KeyEvent::new(
+            KeyCode::Char('@'),
+            KeyModifiers::CONTROL | KeyModifiers::ALT,
+        ));
+        assert_eq!(app.query, "@", "an AltGr character was swallowed");
     }
 
     /// Backspace removes a whole grapheme, so a decomposed accent never sheds

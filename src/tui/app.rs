@@ -480,11 +480,15 @@ fn pop_grapheme(text: &mut String) {
     }
 }
 
-/// A keypress with no chord modifier. Ctrl+V and friends must not type their
-/// base letter into a text field.
+/// A keypress that should type. A pure Ctrl or pure Alt chord is a command
+/// somewhere else, and must not drop its base letter into a text field. Ctrl
+/// and Alt held together is how Windows delivers AltGr, which is how half of
+/// Europe types, so that combination passes.
 fn plain(key: KeyEvent) -> bool {
-    !key.modifiers
-        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+    let control = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+    control == alt
 }
 
 /// Runs the shared export away from the interface thread.

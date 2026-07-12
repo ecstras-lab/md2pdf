@@ -45,7 +45,8 @@ pub(super) fn preprocess(markdown: &str) -> String {
         // stray backtick runs from different paragraphs would hide everything
         // between them from the rewrite, so those are left for the parser.
         let fence = matched.starts_with("```") || matched.starts_with("~~~");
-        if !fence && matched.contains("\n\n") {
+        let blank_line = matched.contains("\n\n") || matched.contains("\n\r\n");
+        if !fence && blank_line {
             return matched.to_owned();
         }
 

@@ -90,12 +90,20 @@ pub fn to_pdf(
     let options = typst_pdf::PdfOptions::default();
 
     let pdf = typst_pdf::pdf(&document, &options).map_err(|diagnostics| {
-        let messages = diagnostics
-            .iter()
-            .map(|entry| entry.message.to_string())
-            .collect();
+        let mut description = capped(
+            diagnostics
+                .iter()
+                .map(|entry| entry.message.to_string())
+                .collect(),
+        );
 
-        anyhow!("the PDF could not be written\n{}", capped(messages))
+        // The warnings ride along here too, as they do on the typeset path.
+        for warning in &warnings {
+            description.push_str("\nwarning: ");
+            description.push_str(warning);
+        }
+
+        anyhow!("the PDF could not be written\n{description}")
     })?;
 
     Ok(Compiled { pdf, warnings })
