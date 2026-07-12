@@ -80,6 +80,12 @@ pub fn skipped(reason: &str) {
     println!("{} {reason}", label_for("skipped", AnsiColor::Yellow));
 }
 
+/// A warning that must survive `--quiet`, which silences the report but not
+/// what went wrong. It goes to stderr, keeping quiet stdout clean for pipes.
+pub fn warning(reason: &str) {
+    eprintln!("{} {reason}", label_for("warning", AnsiColor::Yellow));
+}
+
 /// The line that closes a run. The path is the part a person reaches for, so
 /// it is the only value the report emphasises.
 pub fn wrote(
@@ -94,18 +100,21 @@ pub fn wrote(
     println!("{label} {path} {detail}");
 }
 
-/// A size a person can hold in their head, rather than a byte count.
+/// A size a person can hold in their head, rather than a byte count. The unit
+/// is chosen after rounding, so a value just under a boundary cannot print as
+/// the contradiction `1024 KB`.
 pub fn size(bytes: usize) -> String {
     const UNIT: f64 = 1024.0;
 
     let bytes = bytes as f64;
+    let kilobytes = bytes / UNIT;
 
     if bytes < UNIT {
         format!("{bytes:.0} B")
-    } else if bytes < UNIT * UNIT {
-        format!("{:.0} KB", bytes / UNIT)
+    } else if kilobytes.round() < UNIT {
+        format!("{kilobytes:.0} KB")
     } else {
-        format!("{:.1} MB", bytes / (UNIT * UNIT))
+        format!("{:.1} MB", kilobytes / UNIT)
     }
 }
 
@@ -196,6 +205,13 @@ mod tests {
         assert_eq!(size(2048), "2 KB");
         assert_eq!(size(612 * 1024), "612 KB");
         assert_eq!(size(3 * 1024 * 1024 / 2), "1.5 MB");
+    }
+
+    /// A value just under a boundary must promote, never print `1024 KB`.
+    #[test]
+    fn a_size_at_a_unit_boundary_promotes() {
+        assert_eq!(size(1_048_570), "1.0 MB");
+        assert_eq!(size(1_048_576), "1.0 MB");
     }
 
     #[test]

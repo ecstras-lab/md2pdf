@@ -54,7 +54,14 @@ fn run() -> Result<(), Failure> {
     let outcome = write_pdf(&source_path, &output_path, &theme.build())?;
     let took = started.elapsed();
 
+    // Quiet silences the report, never what went wrong. Typst's own warnings
+    // are not marked in the PDF the way skipped embeds are, so hiding them
+    // here would hide them entirely.
     if cli.quiet {
+        for warning in &outcome.warnings {
+            report::warning(warning);
+        }
+
         return Ok(());
     }
 
