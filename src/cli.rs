@@ -87,7 +87,7 @@ pub(crate) struct Cli {
     #[arg(short, long, value_name = "PATH")]
     pub(crate) output: Option<PathBuf>,
 
-    /// Report nothing but errors.
+    /// Report nothing but errors and warnings.
     #[arg(short, long)]
     pub(crate) quiet: bool,
 
@@ -111,7 +111,14 @@ impl Cli {
 /// Reads the command line, having first settled how the output is to be
 /// coloured.
 pub(crate) fn parse() -> Cli {
-    if let Some(choice) = color_from(std::env::args().skip(1)) {
+    // `args_os`, because a non unicode argument must reach clap and its
+    // proper error rather than panic here. Only unicode arguments could
+    // carry the flag anyway.
+    let args = std::env::args_os()
+        .skip(1)
+        .filter_map(|arg| arg.into_string().ok());
+
+    if let Some(choice) = color_from(args) {
         use_color(choice);
     }
 
@@ -123,10 +130,15 @@ pub(crate) fn parse() -> Cli {
 
 /// clap prints `--help` and its own errors from inside the parser, drawing the
 /// choice from the same place `anstream` does. So `--color` has to be settled
-/// before the parser that owns it has ever run. This pass is lenient, and a
-/// word it does not know is left for clap to reject with a proper message.
+/// before the parser that owns it has ever run. This pass mirrors the real
+/// parse, stopping at `--` and matching case exactly, so it never obeys a
+/// value clap is about to reject.
 fn color_from(mut args: impl Iterator<Item = String>) -> Option<ColorChoice> {
     while let Some(arg) = args.next() {
+        if arg == "--" {
+            return None;
+        }
+
         let word = if arg == "--color" {
             args.next()?
         } else if let Some(word) = arg.strip_prefix("--color=") {
@@ -135,7 +147,7 @@ fn color_from(mut args: impl Iterator<Item = String>) -> Option<ColorChoice> {
             continue;
         };
 
-        return ColorChoice::from_str(&word, true).ok();
+        return ColorChoice::from_str(&word, false).ok();
     }
 
     None
@@ -188,15 +200,17 @@ fn find_by_name(
     found
 }
 
+/// Appends the `.md` a bare name left off. A path that already names a real
+/// file is taken as typed, so `md2pdf report.txt` reads that file rather than
+/// reporting a hunt for `report.txt.md` the user never asked about.
 pub(crate) fn with_markdown_extension(path: PathBuf) -> PathBuf {
-    match path.extension() {
-        Some(extension) if extension.eq_ignore_ascii_case("md") => path,
-        _ => {
-            let mut name = path.into_os_string();
-            name.push(".md");
-            PathBuf::from(name)
-        }
+    if files::is_markdown(&path) || path.is_file() {
+        return path;
     }
+
+    let mut name = path.into_os_string();
+    name.push(".md");
+    PathBuf::from(name)
 }
 
 /// Mirrors the source tree beneath `PDF/`, as the browser build did, so
@@ -422,7 +436,6 @@ mod tests {
             Some(ColorChoice::Never)
         );
         assert_eq!(scan(&["--color=always", "a.md"]), Some(ColorChoice::Always));
-        assert_eq!(scan(&["a.md", "--color", "AUTO"]), Some(ColorChoice::Auto));
     }
 
     /// Nothing to say is said by saying nothing, and clap gets to be the one
@@ -433,5 +446,18 @@ mod tests {
         assert_eq!(scan(&["a.md", "--color"]), None);
         assert_eq!(scan(&["a.md", "--color", "beige"]), None);
         assert_eq!(scan(&["--colorless", "a.md"]), None);
+        // The real parse is case sensitive and stops at `--`. The pre-scan
+        // must never obey a value clap is about to reject.
+        assert_eq!(scan(&["a.md", "--color", "AUTO"]), None);
+        assert_eq!(scan(&["--", "--color=never"]), None);
+    }
+
+    /// A file the user named exactly is taken as typed, whatever it is called.
+    #[test]
+    fn an_existing_file_is_never_renamed() {
+        assert_eq!(
+            with_markdown_extension("Cargo.toml".into()),
+            PathBuf::from("Cargo.toml")
+        );
     }
 }
