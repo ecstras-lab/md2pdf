@@ -9,6 +9,7 @@ use ratatui::widgets::ListState;
 
 use crate::cli::ThemeName;
 use crate::convert;
+use crate::files;
 use crate::report;
 use crate::tui::notes;
 
@@ -17,9 +18,6 @@ const LINGER: Duration = Duration::from_secs(6);
 
 /// Turns once per tick while a PDF is being written.
 pub(super) const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/// Where PDFs land when the save folder is left as it starts.
-const DEFAULT_SAVE_DIR: &str = "PDF";
 
 /// A written PDF.
 pub(super) struct Export {
@@ -41,6 +39,8 @@ pub(super) struct Notice {
 
 pub(super) struct App {
     pub(super) notes: Vec<PathBuf>,
+    /// How each file is shown and searched, computed once beside `notes`.
+    pub(super) labels: Vec<String>,
     pub(super) matches: Vec<usize>,
     pub(super) cursor: usize,
     /// The list scrolls itself around the cursor, and remembers how far.
@@ -71,6 +71,7 @@ impl App {
         start: Option<&Path>,
     ) -> Self {
         let notes = notes::find(Path::new("."));
+        let labels = notes.iter().map(|path| files::display(path)).collect();
         let matches = (0..notes.len()).collect();
         let cursor = start
             .and_then(|wanted| position_of(&notes, wanted))
@@ -82,10 +83,11 @@ impl App {
             .and_then(Path::parent)
             .map(|parent| parent.display().to_string())
             .filter(|shown| !shown.is_empty())
-            .unwrap_or_else(|| DEFAULT_SAVE_DIR.to_owned());
+            .unwrap_or_else(|| files::DEFAULT_OUTPUT_DIR.to_owned());
 
         Self {
             notes,
+            labels,
             matches,
             cursor,
             list: ListState::default(),
@@ -110,16 +112,28 @@ impl App {
         Some(&self.notes[index])
     }
 
+    /// How the selected file is shown, in the list and the export panel.
+    pub(super) fn selected_label(&self) -> Option<&str> {
+        let index = *self.matches.get(self.cursor)?;
+
+        Some(&self.labels[index])
+    }
+
+    /// The file the selected source's PDF is named.
+    pub(super) fn output_file_name(&self) -> Option<String> {
+        let name = files::pdf_file_name(self.selected()?)?;
+
+        Some(name.to_string_lossy().into_owned())
+    }
+
     /// Where the selected note would be written, folder and all.
     pub(super) fn output_path(&self) -> Option<PathBuf> {
-        let stem = self.selected()?.file_stem()?;
-
-        Some(Path::new(&self.save_dir).join(stem).with_extension("pdf"))
+        Some(Path::new(&self.save_dir).join(files::pdf_file_name(self.selected()?)?))
     }
 
     /// That path, written the same way on every platform.
     pub(super) fn output_display(&self) -> Option<String> {
-        Some(self.output_path()?.display().to_string().replace('\\', "/"))
+        Some(files::display(&self.output_path()?))
     }
 
     pub(super) fn on_key(
@@ -195,7 +209,7 @@ impl App {
             }
             KeyCode::Enter => {
                 if self.save_dir.trim().is_empty() {
-                    self.save_dir = DEFAULT_SAVE_DIR.to_owned();
+                    self.save_dir = files::DEFAULT_OUTPUT_DIR.to_owned();
                 }
                 self.editing_save = false;
             }
@@ -250,7 +264,7 @@ impl App {
                     report::size(export.bytes),
                     report::duration(export.elapsed),
                 );
-                let shown = export.path.display().to_string().replace('\\', "/");
+                let shown = files::display(&export.path);
 
                 self.say(format!("wrote {shown} ({detail})"), false);
             }
@@ -295,7 +309,7 @@ impl App {
     fn refilter(&mut self) {
         let selected = self.matches.get(self.cursor).copied();
 
-        self.matches = notes::matching(&self.notes, &self.query);
+        self.matches = notes::matching(&self.labels, &self.query);
 
         // Keep the note the reader had selected, if the query has not filtered
         // it away, rather than jumping the cursor on every letter typed.

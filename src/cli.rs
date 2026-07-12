@@ -8,6 +8,7 @@ use anyhow::{Context, Result};
 use clap::builder::Styles;
 use clap::{ColorChoice, Parser, ValueEnum};
 
+use crate::files;
 use crate::report::Failure;
 use crate::theme::Theme;
 
@@ -159,57 +160,30 @@ pub(crate) fn missing_source(source_path: &Path) -> Failure {
         return failure;
     };
 
-    let matches = find_by_name(Path::new("."), name, 3);
+    let matches = find_by_name(Path::new("."), name);
 
     if matches.is_empty() {
         return failure.hint("check the path, or run `md2pdf --help`");
     }
 
     matches.iter().fold(failure, |failure, candidate| {
-        // The walk starts at `.`, which nobody wants to read back.
-        let shown = candidate.strip_prefix(".").unwrap_or(candidate);
-        failure.hint(format!("did you mean `{}`?", shown.display()))
+        failure.hint(format!("did you mean `{}`?", files::display(candidate)))
     })
 }
 
-/// Every file called `name` within `depth` directories of `root`, skipping the
-/// places nothing worth converting lives.
+/// Every file called `name` in reach of the shared walker, so the hint offers
+/// exactly what the interactive picker would list.
 fn find_by_name(
     root: &Path,
     name: &OsStr,
-    depth: usize,
 ) -> Vec<PathBuf> {
-    const SKIPPED: [&str; 4] = ["target", "PDF", ".git", "node_modules"];
-
-    if depth == 0 {
-        return Vec::new();
-    }
-
-    let Ok(entries) = std::fs::read_dir(root) else {
-        return Vec::new();
-    };
-
     let mut found = Vec::new();
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-
-        if path.is_file() {
-            if path.file_name() == Some(name) {
-                found.push(path);
-            }
-            continue;
+    files::walk(root, 4, &mut |path| {
+        if path.file_name() == Some(name) {
+            found.push(path);
         }
-
-        let skip = path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .is_some_and(|folder| SKIPPED.contains(&folder));
-
-        if !skip {
-            found.extend(find_by_name(&path, name, depth - 1));
-        }
-    }
+    });
 
     found
 }
@@ -225,27 +199,27 @@ pub(crate) fn with_markdown_extension(path: PathBuf) -> PathBuf {
     }
 }
 
-/// Mirrors the source tree beneath `PDF/`, as the browser build did:
-/// `notes/2024/post.md` becomes `PDF/notes/2024/post.pdf`.
+/// Mirrors the source tree beneath `PDF/`, as the browser build did, so
+/// `notes/2024/post.md` becomes `PDF/notes/2024/post.pdf`. The path is
+/// normalised first, keeping a `..` in the source from steering the output
+/// back out of the folder. A source from outside the working tree keeps its
+/// parent folder's name, so notes from two vaults cannot land on each other.
 pub(crate) fn default_output_path(source_path: &Path) -> Result<PathBuf> {
     let working_dir = std::env::current_dir()?;
-    let absolute = working_dir.join(source_path);
+    let absolute = files::normalize(&working_dir.join(source_path));
 
     let directory = absolute.parent().unwrap_or(&working_dir).to_path_buf();
-    let relative = directory
-        .strip_prefix(&working_dir)
-        .unwrap_or(Path::new(""));
+    let relative = match directory.strip_prefix(&working_dir) {
+        Ok(relative) => relative.to_path_buf(),
+        Err(_) => directory.file_name().map(PathBuf::from).unwrap_or_default(),
+    };
 
-    let stem = absolute
-        .file_stem()
-        .context("the source file has no name")?
-        .to_owned();
+    let file = files::pdf_file_name(&absolute).context("the source file has no name")?;
 
     Ok(working_dir
-        .join("PDF")
+        .join(files::DEFAULT_OUTPUT_DIR)
         .join(relative)
-        .join(stem)
-        .with_extension("pdf"))
+        .join(file))
 }
 
 #[cfg(test)]
@@ -283,10 +257,42 @@ mod tests {
         assert_eq!(nested, working_dir.join("PDF/notes/2024/post.pdf"));
     }
 
+    /// `notes.v1.md` and `notes.v2.md` are different notes. Swapping the
+    /// extension in would collide them both onto `notes.pdf`.
+    #[test]
+    fn dotted_stems_survive_into_the_output_name() {
+        let working_dir = std::env::current_dir().unwrap();
+
+        let output = default_output_path(Path::new("notes.v1.md")).unwrap();
+        assert_eq!(output, working_dir.join("PDF").join("notes.v1.pdf"));
+    }
+
+    /// A `..` in the source must not steer the output back out of `PDF/`.
+    #[test]
+    fn parent_components_cannot_escape_the_output_folder() {
+        let working_dir = std::env::current_dir().unwrap();
+
+        let output = default_output_path(Path::new("../md2pdf/note.md")).unwrap();
+        assert_eq!(output, working_dir.join("PDF").join("note.pdf"));
+    }
+
+    /// A source outside the working tree keeps its parent folder's name, so
+    /// same-stem notes from two elsewhere places cannot land on each other.
+    #[test]
+    fn outside_sources_keep_their_parent_folder_name() {
+        let working_dir = std::env::current_dir().unwrap();
+
+        let output = default_output_path(Path::new("C:/vault/daily/note.md")).unwrap();
+        assert_eq!(
+            output,
+            working_dir.join("PDF").join("daily").join("note.pdf")
+        );
+    }
+
     /// The note that moved into `tests/` is the case this exists for.
     #[test]
     fn a_missing_note_is_looked_for_nearby() {
-        let matches = find_by_name(Path::new("."), OsStr::new("test.md"), 3);
+        let matches = find_by_name(Path::new("."), OsStr::new("test.md"));
 
         assert!(
             matches.iter().any(|path| path.ends_with("tests/test.md")),
@@ -296,7 +302,7 @@ mod tests {
 
     #[test]
     fn the_search_stays_out_of_build_output() {
-        let matches = find_by_name(Path::new("."), OsStr::new("test.md"), 3);
+        let matches = find_by_name(Path::new("."), OsStr::new("test.md"));
 
         for path in &matches {
             let text = path.to_string_lossy();

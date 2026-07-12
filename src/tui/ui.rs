@@ -1,7 +1,5 @@
 //! Drawing the interface.
 
-use std::path::Path;
-
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -11,7 +9,7 @@ use ratatui::widgets::{Block, BorderType, List, ListItem, Padding, Paragraph};
 use crate::cli::ThemeName;
 use crate::theme::{self, Theme};
 use crate::tui::app::{App, SPINNER};
-use crate::tui::{logo, notes};
+use crate::tui::logo;
 
 /// The skipped panel grows with what it has to say, up to this.
 const SKIPPED_HEIGHT: u16 = 6;
@@ -159,7 +157,7 @@ fn draw_notes(
     let items: Vec<ListItem> = app
         .matches
         .iter()
-        .map(|&index| ListItem::new(notes::label(&app.notes[index])))
+        .map(|&index| ListItem::new(app.labels[index].as_str()))
         .collect();
 
     let list = List::new(items)
@@ -242,9 +240,9 @@ fn draw_export(
     );
 
     let name = app
-        .selected()
-        .map(notes::label)
-        .unwrap_or_else(|| "no file selected".to_owned());
+        .selected_label()
+        .unwrap_or("no file selected")
+        .to_owned();
 
     frame.render_widget(
         Line::from(Span::styled(
@@ -276,10 +274,10 @@ fn save_value(
     app: &App,
     palette: &Palette,
 ) -> Line<'static> {
+    // The real naming rule, so the preview cannot lie about the landing spot.
     let filename = app
-        .selected()
-        .and_then(Path::file_stem)
-        .map(|stem| format!("/{}.pdf", stem.to_string_lossy()))
+        .output_file_name()
+        .map(|name| format!("/{name}"))
         .unwrap_or_default();
 
     if app.editing_save {

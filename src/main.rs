@@ -3,6 +3,7 @@
 mod cli;
 mod convert;
 mod document;
+mod files;
 mod markdown;
 mod report;
 mod theme;
