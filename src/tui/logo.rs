@@ -1,11 +1,12 @@
 //! The wordmark, drawn in quadrant blocks from the project's SVG logo.
 //!
-//! The logo is a 50 by 5 pixel grid. Here it is squashed to four rows, which
-//! every letterform survives, so that quadrant characters carry it in exactly
-//! two terminal rows. Only quadrants are used, because they sit in the Block
-//! Elements range that every terminal font carries. The denser sextants would
-//! halve nothing further and rendered as empty boxes on fonts without
-//! Unicode's legacy computing symbols.
+//! The logo is a 50 by 5 pixel grid. The SVG separates its letters by a single
+//! pixel, which is plenty at print size and nothing at all in a terminal, so a
+//! second blank column is added to every gap and the letters land on their own
+//! cells. Only quadrant characters are used, because they sit in the Block
+//! Elements range that every terminal font carries. Nothing denser exists
+//! there: the sextants that would halve the height rendered as empty boxes on
+//! fonts without Unicode's legacy computing symbols.
 //!
 //! Each row pairs the glyphs with a colour mask of the same length. In the
 //! mask `2` marks the accent, which is the 2, `1` the heading colour that the
@@ -16,9 +17,19 @@ use std::iter;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
-const ROWS: [(&str, &str); 2] = [
-    ("█▙ ▟█▐▛▀▙▝▀▀▙▐▛▀▙▐▛▀▙▐▛▀▀", "1101111112222111111111111"),
-    ("█▝▀▘█▐▙▄▛▐██▙▐▛▀▘▐▙▄▛▐▛▀ ", "1111111112222111111111110"),
+const ROWS: [(&str, &str); 3] = [
+    (
+        "█▙ ▟█ █▀▜▖▝▀▀▙ █▀▜▖▐▛▀▙ █▀▀▘",
+        "1101101111222201111111101111",
+    ),
+    (
+        "█▝█▘█ █ ▐▌▗▛▀▘ █▀▀ ▐▌ █ █▀▘ ",
+        "1111101011222201110110101110",
+    ),
+    (
+        "▀   ▀ ▀▀▀ ▝▀▀▀ ▀   ▝▀▀▘ ▀   ",
+        "1000101110222201000111101000",
+    ),
 ];
 
 /// How many rows the logo stands.
