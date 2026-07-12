@@ -40,8 +40,16 @@ pub fn build(theme: &Theme) -> String {
             syntax.class,
             Style::Plain,
         ),
-        ("entity.name", syntax.title, Style::Plain),
-        ("variable", syntax.variable, Style::Plain),
+        ("entity.name", syntax.function, Style::Plain),
+        // Only call sites. A bare `variable` selector would catch every
+        // plain identifier the grammars scope as `variable.other`, tinting
+        // half the block where highlight.js left them alone.
+        ("variable.function", syntax.function, Style::Plain),
+        (
+            "variable.language, variable.parameter",
+            syntax.built_in,
+            Style::Plain,
+        ),
     ];
 
     let mut xml = String::new();
@@ -103,7 +111,7 @@ mod tests {
             let parsed = ThemeSet::load_from_reader(&mut cursor)
                 .expect("syntect rejected the generated tmTheme");
 
-            assert_eq!(parsed.scopes.len(), 10);
+            assert_eq!(parsed.scopes.len(), 11);
         }
     }
 

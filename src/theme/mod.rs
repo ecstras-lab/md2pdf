@@ -31,9 +31,7 @@ pub struct SyntaxColors {
     pub number: Color,
     pub built_in: Color,
     pub function: Color,
-    pub title: Color,
     pub class: Color,
-    pub variable: Color,
 }
 
 pub struct Theme {
@@ -89,9 +87,7 @@ impl Theme {
                 number: Color::hex(0xb91c1c),
                 built_in: Color::hex(0x6d28d9),
                 function: Color::hex(0x7c3aed),
-                title: Color::hex(0x7c3aed),
                 class: Color::hex(0xca8a04),
-                variable: Color::hex(0x6d28d9),
             },
         }
     }
@@ -124,9 +120,7 @@ impl Theme {
                 number: Color::hsl(6.0, 1.00, 0.77),
                 built_in: Color::hex(0xa5b4fc),
                 function: Color::hex(0xc4b5fd),
-                title: Color::hex(0xc4b5fd),
                 class: Color::hsl(35.0, 1.00, 0.70),
-                variable: Color::hex(0xa5b4fc),
             },
         }
     }
