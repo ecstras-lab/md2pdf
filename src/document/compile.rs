@@ -44,7 +44,8 @@ pub struct Compiled {
 }
 
 /// Renders Typst source to PDF bytes. `files` are read by virtual path from
-/// within the source: the syntax theme, the icons and any embedded images.
+/// within the source, meaning the syntax theme, the icons and any embedded
+/// images.
 /// They are taken by value, so embedded images move into the engine instead
 /// of being copied.
 pub fn to_pdf(

@@ -100,7 +100,7 @@ mod tests {
     use super::*;
     use two_face::re_exports::syntect::highlighting::ThemeSet;
 
-    /// The real contract: syntect must accept what we emit, because Typst
+    /// The real contract is that syntect must accept what we emit, because Typst
     /// hands this file straight to syntect at compile time.
     #[test]
     fn syntect_parses_the_generated_theme() {

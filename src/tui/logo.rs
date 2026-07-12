@@ -5,7 +5,7 @@
 //! second blank column is added to every gap and the letters land on their own
 //! cells. Only quadrant characters are used, because they sit in the Block
 //! Elements range that every terminal font carries. Nothing denser exists
-//! there: the sextants that would halve the height rendered as empty boxes on
+//! there. The sextants that would halve the height rendered as empty boxes on
 //! fonts without Unicode's legacy computing symbols.
 //!
 //! Each row pairs the glyphs with a colour mask of the same length. In the
@@ -35,7 +35,7 @@ const ROWS: [(&str, &str); 3] = [
 /// How many rows the logo stands.
 pub(super) const HEIGHT: u16 = ROWS.len() as u16;
 
-/// The logo as coloured lines: the letters in `heading`, the 2 in `accent`.
+/// The logo as coloured lines, the letters in `heading` and the 2 in `accent`.
 pub(super) fn lines(
     heading: Color,
     accent: Color,

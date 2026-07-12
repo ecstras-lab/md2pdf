@@ -38,7 +38,7 @@ pub(super) struct Export {
     warnings: Vec<String>,
 }
 
-/// What the export worker sends back: a written PDF, or why it could not be.
+/// What the export worker sends back, a written PDF or why it could not be.
 type Written = Result<Export, String>;
 
 /// A word from the interface, shown on the footer until it goes stale.
@@ -145,8 +145,9 @@ impl App {
         Some(&self.labels[index])
     }
 
-    /// What the selected file appends to the save folder: its folders under
-    /// the working directory, then its own name with the pdf extension.
+    /// What the selected file appends to the save folder, which is its
+    /// folders under the working directory, then its own name with the pdf
+    /// extension.
     pub(super) fn output_suffix(&self) -> Option<String> {
         let source = self.selected()?;
 

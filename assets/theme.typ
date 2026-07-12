@@ -365,7 +365,7 @@
 
 // ── Code blocks ──────────────────────────────────────────────
 
-// The inset is the border's own width: a CSS border sits inside the box, so
+// The inset is the border's own width. A CSS border sits inside the box, so
 // the content, and the absolutely positioned language label, begin just past it.
 #let code-block(
   lang,
@@ -789,7 +789,7 @@
             fill: marker-colors.at(0),
             weight: 600,
           )[#str(entry.number).],
-          // Written flat: a line break here would open the note with a space,
+          // Written flat, because a line break here would open the note with a space,
           // and a label can only attach to the content it follows in markup.
           [#entry.body#label("fn-" + str(entry.number))#if entry.backref [#h(3.9pt)#fn-backref(entry.number)]],
         )
@@ -800,7 +800,7 @@
 
 // ── Properties block ─────────────────────────────────────────
 
-// `.prop-tag` is an inline block: its padding and its border both sit inside
+// `.prop-tag` is an inline block, so its padding and its border both sit inside
 // the box. An `outset` would paint them without reserving the room, leaving
 // the pills taller than the row that holds them.
 #let prop-tags(items) = {

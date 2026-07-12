@@ -21,7 +21,7 @@ static HASHTAG: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(^|\s)#([A-Za-z0-9_/-]*[A-Za-z_/-][A-Za-z0-9_/-]*)").unwrap());
 
 /// Expands Obsidian's `==highlight==` and `%%comment%%` spans, then hashtags.
-/// Code never reaches here: it arrives as its own event.
+/// Code never reaches here, since it arrives as its own event.
 pub(super) fn write_inline(
     out: &mut String,
     text: &str,
@@ -83,7 +83,7 @@ fn write_hashtags(
     push_literal(out, &text[last..]);
 }
 
-/// Resolves a fence's language the way highlight.js did: exact match first,
+/// Resolves a fence's language the way highlight.js did. Exact match first,
 /// then the part before the first hyphen, so `python-repl` becomes `python`.
 fn resolve_language(tag: &str) -> Option<String> {
     if tag.is_empty() {

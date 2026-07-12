@@ -161,7 +161,7 @@ impl<'a> Renderer<'a> {
             Event::Code(code) => out.push_str(&format!("#inline-code({})", literal(&code))),
             Event::InlineMath(tex) => out.push_str(&inline_math(&tex)),
             Event::DisplayMath(tex) => out.push_str(&display_math(&tex)),
-            // The browser build rendered raw HTML; Typst has no HTML engine.
+            // The browser build rendered raw HTML. Typst has no HTML engine.
             Event::Html(_) | Event::InlineHtml(_) => {}
             Event::FootnoteReference(name) => self.footnote_reference(&name, out),
             // `marked` ran with `breaks: true`, so a single newline broke the line.
@@ -212,7 +212,7 @@ impl<'a> Renderer<'a> {
 
             Tag::List(start) => self.list(start, out),
             Tag::Item => {
-                // Items are consumed by `list`; a stray one renders bare.
+                // Items are consumed by `list`, so a stray one renders bare.
                 let inner = self.capture();
                 out.push_str(&inner);
             }
@@ -305,7 +305,7 @@ impl<'a> Renderer<'a> {
 
         // The marker was consumed from inside the first paragraph, so the
         // first capture closes that paragraph and the second drains the rest
-        // of the blockquote: its lists, code blocks and nested quotes.
+        // of the blockquote, meaning its lists, code blocks and nested quotes.
         let mut inner = self.capture();
         if !inner.trim().is_empty() {
             inner.push_str("\n\n");

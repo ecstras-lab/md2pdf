@@ -85,7 +85,8 @@ fn icon_path(icon: &str) -> String {
     format!("/icons/callout-{icon}.svg")
 }
 
-/// The complete Typst source: bindings, style rules, then the document body.
+/// The complete Typst source, which is bindings, style rules, then the
+/// document body.
 pub fn source(
     theme: &Theme,
     body: &str,

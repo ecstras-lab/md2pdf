@@ -97,13 +97,13 @@ mod tests {
         );
     }
 
-    /// The load-bearing safety property: nothing from the source text can land
+    /// The load bearing safety property, that nothing from the source text can land
     /// in the output as live Typst syntax. Strip every `#("..")` literal and
     /// no metacharacter may remain.
     #[test]
     fn typst_metacharacters_stay_inside_string_literals() {
         // Escaped in markdown, so these reach the renderer as ordinary text.
-        // `C#` is deliberate: a hash that starts no tag must stay literal.
+        // `C#` is deliberate. A hash that starts no tag must stay literal.
         let out = body(r"a \$dollar\$ and \[bracket\] and \\ slash and C\# sharp");
 
         let literals = Regex::new(r#"#\("(?:[^"\\]|\\.)*"\)"#).unwrap();
