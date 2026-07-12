@@ -292,13 +292,5 @@ Should not be latex: $10 to $20
 
 ![[2026-03-26 11-50-04.mp4]]
 
-## End of File
-
-```
-This hits basically all Obsidian-supported markdown features in one file.
-```
-
-## Footnotes
-
 [^1]: This is the footnote content
 [^2]: This is the footnote content

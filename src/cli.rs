@@ -191,7 +191,7 @@ fn find_by_name(
 ) -> Vec<PathBuf> {
     let mut found = Vec::new();
 
-    files::walk(root, 4, &mut |path| {
+    files::walk(root, files::SEARCH_DEPTH, &mut |path| {
         if path.file_name() == Some(name) {
             found.push(path);
         }

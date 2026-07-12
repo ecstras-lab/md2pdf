@@ -145,10 +145,9 @@ impl App {
         Some(&self.labels[index])
     }
 
-    /// What the selected file appends to the save folder, which is its
-    /// folders under the working directory, then its own name with the pdf
-    /// extension.
-    pub(super) fn output_suffix(&self) -> Option<String> {
+    /// The selected file's PDF, relative to the save folder: its folders
+    /// under the working directory, then its own name with the pdf extension.
+    fn relative_output(&self) -> Option<PathBuf> {
         let source = self.selected()?;
 
         let relative = source
@@ -156,19 +155,19 @@ impl App {
             .map(|parent| parent.strip_prefix(".").unwrap_or(parent))
             .unwrap_or(Path::new(""));
 
-        let file = relative.join(files::pdf_file_name(source)?);
+        Some(relative.join(files::pdf_file_name(source)?))
+    }
 
-        Some(format!("/{}", files::display(&file)))
+    /// What the selected file appends to the save folder, as the edit-in-place
+    /// preview shows it.
+    pub(super) fn output_suffix(&self) -> Option<String> {
+        Some(format!("/{}", files::display(&self.relative_output()?)))
     }
 
     /// Where the selected note would be written. The source tree is mirrored
     /// beneath the save folder, exactly as the command mirrors it under PDF/.
     pub(super) fn output_path(&self) -> Option<PathBuf> {
-        Some(PathBuf::from(format!(
-            "{}{}",
-            self.save_dir,
-            self.output_suffix()?
-        )))
+        Some(Path::new(&self.save_dir).join(self.relative_output()?))
     }
 
     /// That path, written the same way on every platform.

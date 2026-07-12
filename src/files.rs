@@ -8,6 +8,10 @@ use std::path::{Component, Path, PathBuf};
 /// Where PDFs land when nothing chooses otherwise.
 pub const DEFAULT_OUTPUT_DIR: &str = "PDF";
 
+/// How far below the working directory the walkers look. The picker and the
+/// did-you-mean hint share it, so they always see the same files.
+pub const SEARCH_DEPTH: usize = 4;
+
 /// Folders nothing worth converting lives in. Dot folders are skipped by the
 /// walker as well, so `.obsidian` and `.git` alike stay out of every search.
 const SKIPPED: [&str; 3] = ["target", DEFAULT_OUTPUT_DIR, "node_modules"];
@@ -123,7 +127,7 @@ mod tests {
     #[test]
     fn the_walker_finds_the_fixture_and_skips_the_output() {
         let mut found = Vec::new();
-        walk(Path::new("."), 4, &mut |path| {
+        walk(Path::new("."), SEARCH_DEPTH, &mut |path| {
             if is_markdown(&path) {
                 found.push(display(&path));
             }

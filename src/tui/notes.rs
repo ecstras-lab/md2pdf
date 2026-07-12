@@ -4,16 +4,13 @@ use std::path::{Path, PathBuf};
 
 use crate::files;
 
-/// How far below the working directory a file may sit and still be offered.
-const DEPTH: usize = 4;
-
 /// Every markdown file beneath `root`, nearest first, then alphabetically.
 /// The order is what the list shows, so a file in the working directory is
 /// never buried under one four folders down.
 pub(super) fn find(root: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
 
-    files::walk(root, DEPTH, &mut |path| {
+    files::walk(root, files::SEARCH_DEPTH, &mut |path| {
         if files::is_markdown(&path) {
             found.push(path);
         }
