@@ -45,7 +45,8 @@
 
 // ── Page and base typography ─────────────────────────────────
 
-// 800pt wide is the 800px viewport the browser build measured itself against.
+// 600pt is the 800px viewport the browser build measured itself against,
+// converted at this file's 0.75pt per px rule.
 // `height: auto` yields the single uninterrupted page it used to emit.
 #set page(
   width: 600pt,
@@ -399,7 +400,9 @@
         #text(
           font: mono,
           size: 8.4pt,
-          weight: 500,
+          // The stylesheet asked for 500, but no medium face of the mono
+          // family is embedded, so 500 silently fell back here anyway.
+          weight: 400,
           fill: palette.code-lang-foreground,
         )[#lang]
       ]
@@ -586,7 +589,7 @@
 
 // ── Images ───────────────────────────────────────────────────
 
-/// `max-width: 100%; height: auto` — never upscale past the image's own size.
+/// `max-width: 100%; height: auto`, which never upscales past the image's own size.
 #let sized-image(path) = layout(available => {
   let natural = measure(image(path))
   let width = calc.min(
@@ -672,14 +675,10 @@
 
 /// `.footnote-ref`, a badge riding above the line.
 ///
-/// It is drawn as highlighted text rather than a box. A box is an atom that
-/// Typst grows the line to contain, so raising one either stretches the line
-/// or, with `move`, drops it onto a line of its own. Raising a text baseline
-/// is what `super` does, and it leaves the line alone. The edges stand in for
-/// the vertical padding that `highlight` has no parameter for.
 /// `.footnote-ref`, a badge riding above the line on `top: -0.5em` inside a
-/// `sup`. Raising the box's baseline is the only form Typst will paint: it
-/// drops the fill of anything reached through `place`, and `move` is a block.
+/// `sup`. Raising the box's baseline is the one form Typst will paint, since
+/// the fill of anything reached through `place` is dropped, and `move` is a
+/// block.
 #let fn-pill(body) = box(
   fill: palette.secondary,
   radius: 3pt,
