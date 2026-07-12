@@ -61,11 +61,11 @@ Examples:
   md2pdf note.md -t dark               render dark
   md2pdf notes/post.md -o ~/post.pdf   choose the output path
   md2pdf note -q                       add the .md, and say nothing
-  md2pdf -i                            browse and preview, then export
+  md2pdf -i                            pick a file from a list, then export
 
 Every run reports the theme, the source, the output, and any embed it could
-not draw. Those embeds are marked in the PDF too, so `--quiet` hides nothing
-that is not already in the file.
+not draw. Those embeds are marked in the PDF too, and warnings survive
+`--quiet`, so nothing is ever silently lost.
 
 Colour is on whenever a terminal is reading. NO_COLOR, CLICOLOR_FORCE and
 --color all have a say in that."
@@ -75,7 +75,7 @@ pub(crate) struct Cli {
     #[arg(value_name = "FILE", required_unless_present = "interactive")]
     pub(crate) file: Option<PathBuf>,
 
-    /// Browse notes and preview the page before writing it.
+    /// Pick a file from a list, choose where it lands, and export it.
     #[arg(short, long)]
     pub(crate) interactive: bool,
 

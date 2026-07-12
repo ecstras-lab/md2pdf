@@ -10,13 +10,13 @@ md2pdf [OPTIONS] <FILE>
   -i, --interactive              pick a note and a folder, then export
   -t, --theme <light|dark>       colour theme
   -o, --output <PATH>            write the PDF here
-  -q, --quiet                    report nothing but errors
+  -q, --quiet                    report nothing but errors and warnings
       --color <auto|always|never>
 ```
 
 A missing `.md` extension is added for you. Without `--output` the PDF mirrors the source tree beneath `PDF/`, so `notes/2024/post.md` is written to `PDF/notes/2024/post.pdf`. `--interactive` is the only way to leave the file out, because there it is picked from a list. It also flips the default theme, since a file on paper reads best light and a page on a dark terminal reads best dark.
 
-The interface does not mirror the source tree. It saves into one folder, which starts at `PDF` or the folder of any `--output` given, and names each PDF after its note.
+The interface mirrors the source tree the same way, beneath a save folder that starts at `PDF` or the folder of any `--output` given. Two notes sharing a name can never land on each other.
 
 Every run reports the theme, the source, the output, how large the PDF came out and how long it took, along with any embed the converter could not draw. An embed it cannot draw, such as a video, a note transclusion or an image that is not there, also leaves a marked box in the PDF that names the reason. So `--quiet` hides nothing that is not already in the file.
 
@@ -33,7 +33,7 @@ Each stage lives in one module and hands a value to the next.
 3. `document/mod.rs` renders the `Theme` as Typst bindings, glues them in front of `assets/theme.typ`, and appends the body. It also builds the two kinds of file that the Typst source reads by path, the syntax theme and the icons.
 4. `document/compile.rs` hands the whole source to Typst along with the embedded fonts and those in memory files, and returns the PDF bytes.
 
-`convert.rs` runs the first three stages and the fourth. Both the command and the interface go through it, so a file is never built two different ways.
+`convert.rs` runs the whole pipeline and writes the file, and `files.rs` holds the filesystem vocabulary both front ends share, the walker, the path display and the output naming. The command and the interface go through the same code, so a file is never built or named two different ways.
 
 ## The interactive front end
 

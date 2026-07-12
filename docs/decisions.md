@@ -50,6 +50,10 @@ An earlier interface drew the real page beside the note list, rendered by Typst 
 
 So the render is gone, and with it `typst-render`, `ratatui-image` and `image`. The interface is now a file picker and a save location. You pick a note, choose the folder, and write it. The one slow thing left, writing the PDF, runs on a worker so the keyboard stays live, and the interface takes its colours from the document palette so a theme still shows what it does rather than naming it.
 
+## The syntax set is pinned to Typst's own
+
+Fence languages are resolved against two-face before the source is emitted, and Typst highlights with its own copy of the same crate. Those two copies must be the same version. A newer set on our side happily resolves languages the older set inside Typst has never heard of, and the block then renders as plain text while its pill still names the language. Cargo.toml pins the exact version typst-library carries, and the price of a stale grammar is paid knowingly.
+
 ## The terminal is a library's problem
 
 The first version of `report.rs` asked `IsTerminal` whether anyone was watching, looked for `NO_COLOR`, and decided per stream whether to emit escape codes. It missed `CLICOLOR`, `CLICOLOR_FORCE` and `TERM=dumb`. Worse, on Windows a console will not act on an escape sequence until something turns escape sequence handling on, so a run under `conhost` printed the codes instead of obeying them.
