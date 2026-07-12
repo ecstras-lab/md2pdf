@@ -17,9 +17,11 @@ use super::inline::{code_block, display_math, heading_level, inline_math, write_
 use super::literal::{literal, push_literal};
 use super::properties::render_properties;
 
-/// `[!note] Optional title`, the Obsidian callout marker.
+/// `[!note] Optional title`, the Obsidian callout marker. The optional `-`
+/// or `+` after the bracket folds the callout in Obsidian, and a PDF has
+/// nothing to fold, so the sign is matched only to keep it out of the title.
 static CALLOUT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\[!([A-Za-z-]+)\]\s*(.*)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^\[!([A-Za-z-]+)\][-+]?\s*(.*)$").unwrap());
 
 pub(super) struct Renderer<'a> {
     events: Vec<Event<'a>>,
@@ -112,15 +114,24 @@ impl<'a> Renderer<'a> {
     }
 
     /// Collects the plain text of a container, discarding any inline markup.
+    /// Inline containers nest, so only the `End` that closes the outer one
+    /// stops the capture. Breaking on the first `End` of any kind would cut
+    /// an alt like `an *italic* caption` short at the emphasis.
     fn capture_text(&mut self) -> String {
         let mut text = String::new();
+        let mut depth = 0usize;
 
         while self.cursor < self.events.len() {
-            let event = self.events[self.cursor].clone();
-            self.cursor += 1;
+            let event = self.take();
 
             match event {
-                Event::End(_) => break,
+                Event::Start(_) => depth += 1,
+                Event::End(_) => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                }
                 Event::Text(value) | Event::Code(value) => text.push_str(&value),
                 _ => {}
             }
@@ -129,12 +140,19 @@ impl<'a> Renderer<'a> {
         text
     }
 
+    /// Consumes the event under the cursor, moving it out rather than cloning
+    /// it, since every event is visited exactly once.
+    fn take(&mut self) -> Event<'a> {
+        let event = std::mem::replace(&mut self.events[self.cursor], Event::Rule);
+        self.cursor += 1;
+        event
+    }
+
     fn node(
         &mut self,
         out: &mut String,
     ) {
-        let event = self.events[self.cursor].clone();
-        self.cursor += 1;
+        let event = self.take();
 
         match event {
             Event::Start(tag) => self.start(tag, out),
@@ -323,11 +341,7 @@ impl<'a> Renderer<'a> {
         let title = captures[2].trim();
 
         let title = if title.is_empty() {
-            let mut characters = kind.chars();
-            match characters.next() {
-                Some(first) => first.to_uppercase().chain(characters).collect(),
-                None => String::new(),
-            }
+            super::capitalize(&kind)
         } else {
             title.to_owned()
         };
@@ -364,6 +378,15 @@ impl<'a> Renderer<'a> {
                             let state = *state;
                             self.cursor += 1;
                             Some(state)
+                        }
+                        // A loose item wraps its content in a paragraph and
+                        // the marker sits inside it. It is read here and left
+                        // in place, where the walk's no-op arm drops it.
+                        Some(Event::Start(Tag::Paragraph)) => {
+                            match self.events.get(self.cursor + 1) {
+                                Some(Event::TaskListMarker(state)) => Some(*state),
+                                _ => None,
+                            }
                         }
                         _ => None,
                     };

@@ -21,6 +21,17 @@ use frontmatter::Property;
 use preprocess::preprocess;
 use renderer::Renderer;
 
+/// Uppercases the first letter, for labels and titles derived from lowercase
+/// keys. Shared by the properties block and the callout titles.
+fn capitalize(text: &str) -> String {
+    let mut characters = text.chars();
+
+    match characters.next() {
+        Some(first) => first.to_uppercase().chain(characters).collect(),
+        None => String::new(),
+    }
+}
+
 pub struct Rendered {
     pub body: String,
     /// Virtual path to bytes, registered with the Typst engine.
@@ -210,6 +221,56 @@ mod tests {
         let out = body("- [ ] todo\n- [x] done\n");
         assert!(out.contains("#task-list(true, ((false, ["));
         assert!(out.contains("(true, ["));
+    }
+
+    /// A loose task list wraps each item in a paragraph, with the marker
+    /// inside it. The checkboxes must survive the wrapping.
+    #[test]
+    fn loose_task_lists_keep_their_checkboxes() {
+        let out = body("- [ ] todo\n\n- [x] done\n");
+
+        assert!(out.contains("#task-list("), "no task list emitted: {out}");
+        assert!(out.contains("(false, ["));
+        assert!(out.contains("(true, ["));
+    }
+
+    /// `[!note]-` folds the callout in Obsidian. A PDF has nothing to fold,
+    /// and the sign must not leak into the title.
+    #[test]
+    fn foldable_callouts_keep_the_sign_out_of_the_title() {
+        assert!(
+            body("> [!note]- Collapsed\n> body\n").contains(r#"#callout("note", "Collapsed")"#)
+        );
+        assert!(body("> [!tip]+\n> body\n").contains(r#"#callout("tip", "Tip")"#));
+    }
+
+    /// Inline markup nests inside an image's alt. The capture must survive it
+    /// whole, leaking nothing into the body.
+    #[test]
+    fn image_alt_text_survives_inline_markup() {
+        let out = render(
+            "![an *italic* caption](<Pasted image 20260326170345.png>)\n",
+            Path::new("tests"),
+            &[],
+        )
+        .body;
+
+        assert!(
+            out.contains(r#""an italic caption""#),
+            "the alt was truncated: {out}",
+        );
+        assert!(
+            !out.contains(r#"#(" caption")"#),
+            "alt text leaked into the body: {out}",
+        );
+    }
+
+    /// Obsidian requires a tag to carry at least one non-digit, so an issue
+    /// reference stays plain text.
+    #[test]
+    fn numeric_references_are_not_tags() {
+        assert!(!body("fixed #42 today\n").contains("doc-tag"));
+        assert!(body("release #v2 today\n").contains(r#"#doc-tag("v2")"#));
     }
 
     #[test]

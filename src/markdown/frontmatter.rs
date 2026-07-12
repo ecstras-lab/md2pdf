@@ -5,11 +5,15 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+/// The closing fence is anchored to a whole line, so a `----` divider inside
+/// the block cannot end it early and leak the rest of the YAML into the body.
 static FENCE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?s)^---\r?\n(.*?)\r?\n---\r?\n?").unwrap());
+    LazyLock::new(|| Regex::new(r"(?s)^---\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\z)").unwrap());
 
+/// Anchored at both ends, so a value that merely opens with a date, such as
+/// `2026-07-12 Weekly review`, stays ordinary text instead of losing its tail.
 static DATE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{1,2}):(\d{2})(?::\d{2})?)?").unwrap()
+    Regex::new(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{1,2}):(\d{2})(?::\d{2})?)?\s*$").unwrap()
 });
 
 const MONTHS: [&str; 12] = [
@@ -79,7 +83,7 @@ pub fn split(source: &str) -> Frontmatter {
 
         match classify(value) {
             Some(value) => properties.push(Property {
-                label: capitalize(key),
+                label: super::capitalize(key),
                 value,
             }),
             None => warnings.push(format!("frontmatter key `{key}` has an unsupported value")),
@@ -135,14 +139,19 @@ fn scalar(value: &serde_yaml::Value) -> Option<String> {
 }
 
 /// Formats `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM` as `5-Apr-2024 3:30 PM`.
-/// Returns `None` when the text does not open with a date.
+/// Returns `None` when the text is not a date, including one whose fields are
+/// out of range. An impossible value falls back to plain text rather than
+/// being reshaped into an invented moment.
 fn format_date(text: &str) -> Option<String> {
     let captures = DATE.captures(text)?;
     let group = |index: usize| captures.get(index).map(|m| m.as_str());
 
     let year = group(1)?;
     let month = group(2)?.parse::<usize>().ok()?;
-    let day = group(3)?.parse::<u32>().ok()?;
+    let day = group(3)?
+        .parse::<u32>()
+        .ok()
+        .filter(|day| (1..=31).contains(day))?;
 
     let month = MONTHS.get(month.checked_sub(1)?)?;
     let date = format!("{day}-{month}-{year}");
@@ -151,7 +160,12 @@ fn format_date(text: &str) -> Option<String> {
         return Some(date);
     };
 
-    let hours = hours.parse::<u32>().ok()?;
+    let hours = hours.parse::<u32>().ok().filter(|hours| *hours < 24)?;
+    minutes
+        .parse::<u32>()
+        .ok()
+        .filter(|minutes| *minutes < 60)?;
+
     let meridiem = if hours >= 12 { "PM" } else { "AM" };
     let hours = match hours % 12 {
         0 => 12,
@@ -159,15 +173,6 @@ fn format_date(text: &str) -> Option<String> {
     };
 
     Some(format!("{date} {hours}:{minutes} {meridiem}"))
-}
-
-fn capitalize(key: &str) -> String {
-    let mut chars = key.chars();
-
-    match chars.next() {
-        Some(first) => first.to_uppercase().chain(chars).collect(),
-        None => String::new(),
-    }
 }
 
 #[cfg(test)]
@@ -189,6 +194,53 @@ mod tests {
         assert_eq!(parsed.body, "# Title\n");
         let labels: Vec<&str> = parsed.properties.iter().map(|p| p.label.as_str()).collect();
         assert_eq!(labels, ["Zebra", "Alpha", "Middle"]);
+    }
+
+    /// A `----` line inside the block is YAML, not the closing fence. Ending
+    /// there would leak the rest of the frontmatter into the document.
+    #[test]
+    fn a_dashed_line_inside_the_block_does_not_close_the_fence() {
+        let parsed = split("---\ntitle: x\n----\nkey: y\n---\nBody\n");
+
+        assert_eq!(parsed.body, "Body\n");
+        assert!(!parsed.body.contains("key"));
+    }
+
+    /// The block may end at the last line of the note, with no newline after
+    /// the closing fence.
+    #[test]
+    fn a_fence_at_the_end_of_the_note_still_closes() {
+        let parsed = split("---\ntitle: x\n---");
+
+        assert_eq!(parsed.properties.len(), 1);
+        assert_eq!(parsed.body, "");
+    }
+
+    /// A value that merely opens with a date keeps its full text. Truncating
+    /// `2026-07-12 Weekly review` to the date would silently discard content.
+    #[test]
+    fn text_that_opens_with_a_date_is_not_a_date() {
+        let parsed = split("---\ntopic: 2026-07-12 Weekly review\n---\n");
+
+        assert_eq!(
+            parsed.properties[0].value,
+            PropertyValue::Text("2026-07-12 Weekly review".into())
+        );
+    }
+
+    /// An impossible moment falls back to plain text rather than being
+    /// reshaped into an invented one.
+    #[test]
+    fn impossible_dates_and_times_stay_plain_text() {
+        for value in ["2024-01-99", "2024-04-05T25:30", "2024-04-05T12:70"] {
+            let parsed = split(&format!("---\nwhen: {value}\n---\n"));
+
+            assert_eq!(
+                parsed.properties[0].value,
+                PropertyValue::Text(value.into()),
+                "{value} should not classify as a date",
+            );
+        }
     }
 
     #[test]

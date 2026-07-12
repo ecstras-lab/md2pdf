@@ -9,12 +9,16 @@ use two_face::re_exports::syntect::parsing::SyntaxSet;
 use super::literal::{literal, push_literal};
 
 /// The same syntax set Typst highlights with, so a tag that resolves here
-/// is guaranteed to highlight in the compiled document.
+/// is guaranteed to highlight in the compiled document. That guarantee only
+/// holds while Cargo.toml pins two-face to the version inside typst-library,
+/// since a newer set would resolve languages Typst cannot highlight.
 static SYNTAXES: LazyLock<SyntaxSet> = LazyLock::new(two_face::syntax::extra_newlines);
 
 /// A hashtag, anchored to a word boundary the way the stylesheet's rule was.
+/// Obsidian requires at least one character that is not a digit, so an issue
+/// reference like `#42` stays plain text.
 static HASHTAG: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(^|\s)#([A-Za-z0-9_/-]+)").unwrap());
+    LazyLock::new(|| Regex::new(r"(^|\s)#([A-Za-z0-9_/-]*[A-Za-z_/-][A-Za-z0-9_/-]*)").unwrap());
 
 /// Expands Obsidian's `==highlight==` and `%%comment%%` spans, then hashtags.
 /// Code never reaches here: it arrives as its own event.
