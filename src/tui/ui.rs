@@ -275,10 +275,7 @@ fn save_value(
     palette: &Palette,
 ) -> Line<'static> {
     // The real naming rule, so the preview cannot lie about the landing spot.
-    let filename = app
-        .output_file_name()
-        .map(|name| format!("/{name}"))
-        .unwrap_or_default();
+    let filename = app.output_suffix().unwrap_or_default();
 
     if app.editing_save {
         return Line::from(vec![

@@ -53,6 +53,16 @@ impl Failure {
     }
 }
 
+/// Every link of an error's chain on one line, for a display that has a
+/// single row to say it in.
+pub fn error_line(error: &anyhow::Error) -> String {
+    error
+        .chain()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(": ")
+}
+
 /// Anything that reached the top without being turned into advice.
 impl From<anyhow::Error> for Failure {
     fn from(error: anyhow::Error) -> Self {

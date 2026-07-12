@@ -15,10 +15,6 @@ use crate::cli::ThemeName;
 use crate::report::Failure;
 use app::App;
 
-/// Long enough that the loop is not a spin, short enough that the spinner turns
-/// smoothly and a keypress feels answered at once.
-const TICK: Duration = Duration::from_millis(80);
-
 pub(crate) fn run(
     theme: ThemeName,
     output: Option<PathBuf>,
@@ -57,15 +53,19 @@ pub(crate) fn run(
 
     ratatui::restore();
 
+    // A write still on its way to the disk finishes before the process ends,
+    // or the file would be cut off mid byte.
+    app.finish_write();
+
     outcome.map_err(|error| Failure::new(format!("the interface stopped\n{error}")))
 }
 
-/// Waits up to a tick for input, then takes every keypress already waiting
-/// behind it. A held key arrives as a burst, and answering the whole burst
-/// before the next draw keeps the cursor from lagging behind the keyboard.
-/// Answers whether anything happened.
+/// Waits for input as long as the state allows, then takes every keypress
+/// already waiting behind it. A held key arrives as a burst, and answering
+/// the whole burst before the next draw keeps the cursor from lagging behind
+/// the keyboard. Answers whether anything happened.
 fn pump(app: &mut App) -> std::io::Result<bool> {
-    if !event::poll(TICK)? {
+    if !event::poll(app.tick_rate())? {
         return Ok(false);
     }
 
@@ -136,7 +136,7 @@ mod tests {
             "light",
             "dark",
             "tests/test.md",
-            "PDF/test.pdf",
+            "PDF/tests/test.pdf",
             "export",
             "quit",
         ] {
@@ -150,7 +150,7 @@ mod tests {
 
         assert_eq!(
             app.output_display().as_deref(),
-            Some("PDF/test.pdf"),
+            Some("PDF/tests/test.pdf"),
             "the default save folder is not shown",
         );
     }
@@ -163,12 +163,12 @@ mod tests {
 
         retype_save_folder(&mut app, "out");
         press(&mut app, KeyCode::Enter);
-        assert_eq!(app.output_display().as_deref(), Some("out/test.pdf"));
+        assert_eq!(app.output_display().as_deref(), Some("out/tests/test.pdf"));
 
         retype_save_folder(&mut app, "reports");
         press(&mut app, KeyCode::Esc);
         // Escape restores the folder from before this edit.
-        assert_eq!(app.output_display().as_deref(), Some("out/test.pdf"));
+        assert_eq!(app.output_display().as_deref(), Some("out/tests/test.pdf"));
     }
 
     /// Enters the save field, clears it, and types a new folder, the way a
@@ -193,6 +193,61 @@ mod tests {
 
         press(&mut app, KeyCode::Char('t'));
         assert_eq!(app.theme, ThemeName::Light);
+    }
+
+    /// A held Esc closes the search on its first event. Its auto repeat tail
+    /// lands in normal mode, where it must not quit the whole app.
+    #[test]
+    fn a_held_escape_does_not_leak_across_the_mode_boundary() {
+        let mut app = fixture();
+
+        press(&mut app, KeyCode::Char('/'));
+        assert!(app.searching);
+
+        press(&mut app, KeyCode::Esc);
+        assert!(!app.searching);
+
+        press(&mut app, KeyCode::Esc);
+        assert!(!app.quit, "the repeat tail of Esc quit the app");
+    }
+
+    /// A held `/` opens the search on its first event. The repeats must not
+    /// type slashes into the query it just opened.
+    #[test]
+    fn a_held_slash_does_not_type_into_the_query() {
+        let mut app = fixture();
+
+        press(&mut app, KeyCode::Char('/'));
+        press(&mut app, KeyCode::Char('/'));
+
+        assert!(app.searching);
+        assert_eq!(app.query, "");
+    }
+
+    /// Ctrl and Alt chords are commands somewhere else, never text.
+    #[test]
+    fn chorded_letters_do_not_reach_text_fields() {
+        let mut app = fixture();
+
+        press(&mut app, KeyCode::Char('/'));
+        app.on_key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::CONTROL));
+        app.on_key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::ALT));
+
+        assert_eq!(app.query, "");
+    }
+
+    /// Backspace removes a whole grapheme, so a decomposed accent never sheds
+    /// only its combining mark.
+    #[test]
+    fn backspace_removes_whole_graphemes() {
+        let mut app = fixture();
+
+        press(&mut app, KeyCode::Char('/'));
+        press(&mut app, KeyCode::Char('e'));
+        press(&mut app, KeyCode::Char('\u{301}'));
+        press(&mut app, KeyCode::Backspace);
+
+        assert_eq!(app.query, "", "half a grapheme survived: {:?}", app.query);
     }
 
     /// Typing a query narrows the list but keeps the note that was selected, so
@@ -236,7 +291,10 @@ mod tests {
         }
 
         assert!(!app.writing, "the write never finished");
-        assert!(output.join("test.pdf").is_file(), "no PDF reached the disk");
+        assert!(
+            output.join("tests").join("test.pdf").is_file(),
+            "no PDF reached the disk"
+        );
 
         // The fixture embeds a video, a missing image and another note.
         assert_eq!(app.skipped.len(), 3, "{:?}", app.skipped);

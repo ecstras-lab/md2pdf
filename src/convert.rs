@@ -62,3 +62,35 @@ impl Prepared {
         })
     }
 }
+
+/// What a finished export has to say for itself.
+pub(crate) struct Exported {
+    /// The size of the PDF.
+    pub(crate) bytes: usize,
+    /// Everything that had to be skipped.
+    pub(crate) warnings: Vec<String>,
+}
+
+/// Reads, converts and writes a note. The one write path, whichever front end
+/// asked for it.
+pub(crate) fn export(
+    source_path: &Path,
+    theme: &Theme,
+    output_path: &Path,
+) -> Result<Exported> {
+    let rendered = prepare(source_path, theme)?.render()?;
+    let bytes = rendered.pdf.len();
+
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("could not create {}", parent.display()))?;
+    }
+
+    std::fs::write(output_path, rendered.pdf)
+        .with_context(|| format!("could not write {}", output_path.display()))?;
+
+    Ok(Exported {
+        bytes,
+        warnings: rendered.warnings,
+    })
+}

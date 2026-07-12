@@ -26,4 +26,7 @@ two-face = { version = "=0.4.5", default-features = false, features = ["syntect-
 typst = "0.15.0"
 typst-as-lib = "0.16.0"
 typst-pdf = "0.15.0"
+# Already beneath ratatui. Named directly so backspace can remove a whole
+# grapheme rather than half an emoji.
+unicode-segmentation = "1.12"
 urlencoding = "2.1"

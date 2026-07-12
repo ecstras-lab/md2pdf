@@ -9,13 +9,11 @@ mod report;
 mod theme;
 mod tui;
 
-use std::path::Path;
 use std::time::Instant;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use report::Failure;
-use theme::Theme;
 
 fn main() {
     let Err(failure) = run() else {
@@ -51,7 +49,7 @@ fn run() -> Result<(), Failure> {
     };
 
     let started = Instant::now();
-    let outcome = write_pdf(&source_path, &output_path, &theme.build())?;
+    let outcome = convert::export(&source_path, &theme.build(), &output_path)?;
     let took = started.elapsed();
 
     // Quiet silences the report, never what went wrong. Typst's own warnings
@@ -75,34 +73,4 @@ fn run() -> Result<(), Failure> {
     report::wrote(&output_path.display().to_string(), outcome.bytes, took);
 
     Ok(())
-}
-
-/// What a run has to say for itself once the file is on disk.
-struct Outcome {
-    /// Everything that had to be skipped.
-    warnings: Vec<String>,
-    /// The size of the PDF.
-    bytes: usize,
-}
-
-fn write_pdf(
-    source_path: &Path,
-    output_path: &Path,
-    theme: &Theme,
-) -> Result<Outcome> {
-    let rendered = convert::prepare(source_path, theme)?.render()?;
-    let bytes = rendered.pdf.len();
-
-    if let Some(parent) = output_path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("could not create {}", parent.display()))?;
-    }
-
-    std::fs::write(output_path, rendered.pdf)
-        .with_context(|| format!("could not write {}", output_path.display()))?;
-
-    Ok(Outcome {
-        warnings: rendered.warnings,
-        bytes,
-    })
 }
