@@ -51,7 +51,7 @@ pub(crate) struct Rendered {
 
 impl Prepared {
     pub(crate) fn render(self) -> Result<Rendered> {
-        let compiled = document::compile::to_pdf(&self.source, &self.files)?;
+        let compiled = document::compile::to_pdf(&self.source, self.files)?;
 
         let mut warnings = self.warnings;
         warnings.extend(compiled.warnings);

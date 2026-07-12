@@ -1811,6 +1811,7 @@ dependencies = [
  "serde_yaml",
  "tex2typst-rs",
  "two-face",
+ "typst",
  "typst-as-lib",
  "typst-pdf",
  "urlencoding",

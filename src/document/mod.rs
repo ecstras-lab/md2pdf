@@ -223,7 +223,7 @@ $$
 
             let source = source(&theme, &rendered.body);
 
-            let pdf = compile::to_pdf(&source, &files);
+            let pdf = compile::to_pdf(&source, files);
 
             assert!(pdf.is_ok(), "{:?}", pdf.err());
         }

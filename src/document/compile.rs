@@ -1,12 +1,16 @@
 //! Compiles the generated Typst source into a PDF.
 
+use std::sync::LazyLock;
+
 use anyhow::{Result, anyhow};
+use typst::foundations::Bytes;
+use typst::text::Font;
 use typst_as_lib::{TypstAsLibError, TypstEngine};
 
 /// Enough of a typesetting failure to diagnose it, without a wall of text.
 const MAX_DIAGNOSTICS: usize = 5;
 
-static FONTS: [&[u8]; 11] = [
+static FONT_DATA: [&[u8]; 11] = [
     include_bytes!("../../assets/fonts/Montserrat-Regular.ttf"),
     include_bytes!("../../assets/fonts/Montserrat-Italic.ttf"),
     include_bytes!("../../assets/fonts/Montserrat-Medium.ttf"),
@@ -23,6 +27,16 @@ static FONTS: [&[u8]; 11] = [
     include_bytes!("../../assets/fonts/NewCMMath-Book.otf"),
 ];
 
+/// The embedded faces, parsed once. Handing the engine raw bytes would make
+/// it copy and re-parse all eleven files on every compile, where a `Font` is
+/// shared and clones for free.
+static FONTS: LazyLock<Vec<Font>> = LazyLock::new(|| {
+    FONT_DATA
+        .iter()
+        .flat_map(|data| Font::iter(Bytes::new(*data)))
+        .collect()
+});
+
 /// A finished PDF, alongside anything Typst had to say while typesetting it.
 pub struct Compiled {
     pub pdf: Vec<u8>,
@@ -31,44 +45,56 @@ pub struct Compiled {
 
 /// Renders Typst source to PDF bytes. `files` are read by virtual path from
 /// within the source: the syntax theme, the icons and any embedded images.
+/// They are taken by value, so embedded images move into the engine instead
+/// of being copied.
 pub fn to_pdf(
     source: &str,
-    files: &[(String, Vec<u8>)],
+    mut files: Vec<(String, Vec<u8>)>,
 ) -> Result<Compiled> {
-    let resolved: Vec<(&str, Vec<u8>)> = files
-        .iter()
-        .map(|(path, bytes)| (path.as_str(), bytes.clone()))
-        .collect();
+    let resolved = files
+        .iter_mut()
+        .map(|(path, bytes)| (path.as_str(), std::mem::take(bytes)));
 
     let engine = TypstEngine::builder()
         .main_file(source)
-        .fonts(FONTS)
+        .fonts(FONTS.iter().cloned())
         .with_static_file_resolver(resolved)
         .build();
 
     let compiled = engine.compile();
 
-    let warnings = compiled
+    let warnings: Vec<String> = compiled
         .warnings
         .iter()
         .map(|warning| warning.message.to_string())
         .collect();
 
     // A failure here is a defect in the stylesheet, not in the user's note, so
-    // report the diagnostics plainly instead of dumping the error struct.
-    let document = compiled
-        .output
-        .map_err(|error| anyhow!("the document could not be typeset\n{}", describe(&error)))?;
+    // report the diagnostics plainly instead of dumping the error struct. The
+    // warnings ride along, since they are often the clue to the failure.
+    let document = match compiled.output {
+        Ok(document) => document,
+        Err(error) => {
+            let mut description = describe(&error);
+
+            for warning in &warnings {
+                description.push_str("\nwarning: ");
+                description.push_str(warning);
+            }
+
+            return Err(anyhow!("the document could not be typeset\n{description}"));
+        }
+    };
 
     let options = typst_pdf::PdfOptions::default();
 
     let pdf = typst_pdf::pdf(&document, &options).map_err(|diagnostics| {
-        let messages: Vec<String> = diagnostics
+        let messages = diagnostics
             .iter()
             .map(|entry| entry.message.to_string())
             .collect();
 
-        anyhow!("the PDF could not be written\n{}", messages.join("\n"))
+        anyhow!("the PDF could not be written\n{}", capped(messages))
     })?;
 
     Ok(Compiled { pdf, warnings })
@@ -92,11 +118,22 @@ fn describe(error: &TypstAsLibError) -> String {
         }
     }
 
-    if let Some(hidden) = diagnostics
-        .len()
-        .checked_sub(MAX_DIAGNOSTICS)
-        .filter(|n| *n > 0)
-    {
+    if diagnostics.len() > MAX_DIAGNOSTICS {
+        lines.push(format!(
+            "... and {} more",
+            diagnostics.len() - MAX_DIAGNOSTICS
+        ));
+    }
+
+    lines.join("\n")
+}
+
+/// Caps a list of diagnostic lines the way [`describe`] does, so no error
+/// path prints the wall of text `MAX_DIAGNOSTICS` exists to prevent.
+fn capped(mut lines: Vec<String>) -> String {
+    if lines.len() > MAX_DIAGNOSTICS {
+        let hidden = lines.len() - MAX_DIAGNOSTICS;
+        lines.truncate(MAX_DIAGNOSTICS);
         lines.push(format!("... and {hidden} more"));
     }
 
@@ -114,7 +151,7 @@ mod tests {
     /// Every test here asks the same question, which is whether the source
     /// reaches a PDF at all.
     fn exports(source: &str) -> bool {
-        to_pdf(source, &[]).is_ok()
+        to_pdf(source, Vec::new()).is_ok()
     }
 
     #[test]

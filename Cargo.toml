@@ -21,6 +21,9 @@ tex2typst-rs = "0.4.1"
 # highlighting. A newer syntax set here would resolve languages that the
 # compiled document then renders as plain text.
 two-face = { version = "=0.4.5", default-features = false, features = ["syntect-fancy"] }
+# Already beneath typst-as-lib. Named directly for the Font and Bytes types,
+# so the embedded faces parse once instead of on every compile.
+typst = "0.15.0"
 typst-as-lib = "0.16.0"
 typst-pdf = "0.15.0"
 urlencoding = "2.1"
